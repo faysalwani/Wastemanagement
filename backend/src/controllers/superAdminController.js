@@ -128,6 +128,8 @@ exports.updateUserRole = async (req, res, next) => {
 
     const previousRole = targetUser.role;
     targetUser.role = newRole;
+    // Invalidate existing sessions immediately
+    targetUser.tokenVersion = (targetUser.tokenVersion || 0) + 1;
     await targetUser.save({ validateBeforeSave: false });
 
     // Record in Audit Log
@@ -205,6 +207,8 @@ exports.updateUserStatus = async (req, res, next) => {
 
     const previousStatus = targetUser.isActive;
     targetUser.isActive = isActive;
+    // Invalidate existing sessions immediately
+    targetUser.tokenVersion = (targetUser.tokenVersion || 0) + 1;
     await targetUser.save({ validateBeforeSave: false });
 
     // Record in Audit Log

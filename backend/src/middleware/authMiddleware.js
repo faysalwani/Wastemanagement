@@ -50,6 +50,21 @@ const protect = async (req, res, next) => {
       });
     }
 
+    // Role Change / Password Reset Session Invalidation Guard
+    if (
+      decoded.tokenVersion !== undefined &&
+      user.tokenVersion !== undefined &&
+      decoded.tokenVersion !== user.tokenVersion
+    ) {
+      return res.status(401).json({
+        success: false,
+        error: {
+          code: 401,
+          message: 'Your security role or session has been updated. Please sign in again.',
+        },
+      });
+    }
+
     req.user = user;
     next();
   } catch (err) {

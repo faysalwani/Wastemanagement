@@ -21,9 +21,12 @@ const UserSchema = new mongoose.Schema(
         'Please provide a valid email address',
       ],
     },
+    // Password is required ONLY for CITIZEN accounts
     password: {
       type: String,
-      required: [true, 'Please provide a password'],
+      required: function () {
+        return this.role === 'CITIZEN';
+      },
       minlength: [6, 'Password must be at least 6 characters'],
       select: false,
     },
@@ -71,6 +74,16 @@ const UserSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    // Citizen ~30-day periodic verification timestamp
+    lastOtpVerifiedAt: {
+      type: Date,
+      default: Date.now,
+    },
+    // Token Version: Incremented on role change or password reset to invalidate active JWTs
+    tokenVersion: {
+      type: Number,
+      default: 0,
+    },
     // OTP Security Fields
     otpHash: {
       type: String,
@@ -89,6 +102,15 @@ const UserSchema = new mongoose.Schema(
       type: Date,
       select: false,
     },
+    // Password Reset Fields (Citizen only)
+    resetPasswordOtpHash: {
+      type: String,
+      select: false,
+    },
+    resetPasswordExpires: {
+      type: Date,
+      select: false,
+    },
   },
   {
     timestamps: true,
@@ -98,9 +120,9 @@ const UserSchema = new mongoose.Schema(
 // Geospatial index for proximity calculations
 UserSchema.index({ location: '2dsphere' });
 
-// Pre-save hook: Hash password with bcrypt before persisting
+// Pre-save hook: Hash password with bcrypt before persisting (if present and modified)
 UserSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) {
+  if (!this.password || !this.isModified('password')) {
     return next();
   }
   const salt = await bcrypt.genSalt(10);
@@ -110,11 +132,22 @@ UserSchema.pre('save', async function (next) {
 
 // Instance method: Verify entered password
 UserSchema.methods.matchPassword = async function (enteredPassword) {
+  if (!this.password) return false;
   return bcrypt.compare(enteredPassword, this.password);
 };
 
-// Instance method: Generate signed JWT token
+// Instance method: Generate signed JWT token with role-enforced expiration
 UserSchema.methods.generateAuthToken = function () {
+  // Role-based expiration lifetime
+  let expiresIn = '28d'; // CITIZEN: 28 days
+  if (this.role === 'SUPER_ADMIN') {
+    expiresIn = '7d'; // SUPER_ADMIN: 7 days
+  } else if (this.role === 'ADMIN') {
+    expiresIn = '14d'; // ADMIN: 14 days
+  } else if (this.role === 'DRIVER') {
+    expiresIn = '21d'; // DRIVER: 21 days
+  }
+
   return jwt.sign(
     {
       id: this._id,
@@ -122,10 +155,11 @@ UserSchema.methods.generateAuthToken = function () {
       email: this.email,
       role: this.role,
       wardName: this.wardName,
+      tokenVersion: this.tokenVersion || 0,
     },
-    process.env.JWT_SECRET || 'secret_fallback_key',
+    process.env.JWT_SECRET || 'super_secret_jwt_key_srinagar_smart_waste_2026_msc_ai',
     {
-      expiresIn: process.env.JWT_EXPIRE || '7d',
+      expiresIn,
     }
   );
 };

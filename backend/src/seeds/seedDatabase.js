@@ -32,12 +32,11 @@ const seedData = async () => {
 
     // 1. Create Core Users
     const superAdminUser = await User.create({
-      name: 'Central Super Administrator',
-      email: 'superadmin@ecocycle.local',
-      password: 'SuperAdmin@123',
-      role: 'SUPER_ADMIN',
-      phone: '+91 9419000000',
-      wardName: 'Lal Chowk',
+      name: process.env.SUPER_ADMIN_NAME || 'Central Super Administrator',
+      email: process.env.SUPER_ADMIN_EMAIL || 'superadmin@ecocycle.local',
+      role: 'SUPER_ADMIN', // No password for Super Admin (OTP Only)
+      phone: process.env.SUPER_ADMIN_PHONE || '+91 9419000000',
+      wardName: process.env.SUPER_ADMIN_WARD || 'Lal Chowk',
       address: 'SMC Directorate, Srinagar',
       location: { type: 'Point', coordinates: [74.8080, 34.0725] },
       ecoCredits: 1000,
@@ -47,8 +46,7 @@ const seedData = async () => {
     const adminUser = await User.create({
       name: 'Dr. Municipal Administrator',
       email: 'admin@ecocycle.local',
-      password: 'Admin@123',
-      role: 'ADMIN',
+      role: 'ADMIN', // No password for Admin (OTP Only)
       phone: '+91 9419000001',
       wardName: 'Lal Chowk',
       address: 'SMC Central Complex, Srinagar',
@@ -60,8 +58,7 @@ const seedData = async () => {
     const driverUser = await User.create({
       name: 'Tariq Ahmad (Driver)',
       email: 'driver@ecocycle.local',
-      password: 'Driver@123',
-      role: 'DRIVER',
+      role: 'DRIVER', // No password for Driver (OTP Only)
       phone: '+91 9419000002',
       wardName: 'Batamaloo',
       address: 'Batamaloo Fleet Depot, Srinagar',

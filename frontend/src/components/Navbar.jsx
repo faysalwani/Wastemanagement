@@ -21,6 +21,7 @@ import {
   Activity,
   Home as HomeIcon,
   Layers,
+  Sparkles,
   ChevronRight
 } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
@@ -32,7 +33,7 @@ export default function Navbar() {
   const { isConnected } = useSocket() || {};
   const { user, isAuthenticated, logout, getDashboardRoute } = useAuth() || {};
 
-  // Close mobile menu on page transition
+  // Auto-close mobile drawer on route transition
   useEffect(() => {
     setMobileMenuOpen(false);
   }, [location.pathname]);
@@ -43,11 +44,17 @@ export default function Navbar() {
   let navItems = [];
 
   if (!isAuthenticated) {
+    // Restored Public Navigation for visitors and prospective citizens
     navItems = [
       { path: '/', label: 'Home', icon: HomeIcon },
+      { path: '/scan', label: 'AI Scanner', icon: Camera },
+      { path: '/compost', label: 'Composting', icon: Sprout },
+      { path: '/exchange', label: 'Resource Exchange', icon: Repeat },
+      { path: '/smart-bins', label: 'Smart Bins', icon: Cpu },
     ];
   } else if (userRole === 'CITIZEN') {
     navItems = [
+      { path: '/', label: 'Home', icon: HomeIcon },
       { path: '/citizen', label: 'Dashboard', icon: Activity },
       { path: '/scan', label: 'AI Scanner', icon: Camera },
       { path: '/compost', label: 'Composting', icon: Sprout },
@@ -57,19 +64,22 @@ export default function Navbar() {
     ];
   } else if (userRole === 'DRIVER') {
     navItems = [
+      { path: '/', label: 'Home', icon: HomeIcon },
       { path: '/driver', label: 'Driver Dashboard', icon: Truck },
       { path: '/collection', label: 'Route & GPS', icon: Activity },
       { path: '/smart-bins', label: 'Smart Bins', icon: Cpu },
     ];
   } else if (userRole === 'ADMIN') {
     navItems = [
-      { path: '/admin', label: 'Admin Operations', icon: LayoutDashboard },
+      { path: '/', label: 'Home', icon: HomeIcon },
+      { path: '/admin', label: 'Admin Dashboard', icon: LayoutDashboard },
       { path: '/smart-bins', label: 'Smart Bins', icon: Cpu },
       { path: '/collection', label: 'Route Dispatch', icon: Truck },
       { path: '/reports', label: 'Dumping Grievances', icon: AlertTriangle },
     ];
   } else if (userRole === 'SUPER_ADMIN') {
     navItems = [
+      { path: '/', label: 'Home', icon: HomeIcon },
       { path: '/super-admin', label: 'Super Admin', icon: ShieldCheck, badge: 'Root' },
       { path: '/admin', label: 'Operations Hub', icon: LayoutDashboard },
       { path: '/smart-bins', label: 'Smart Bins', icon: Cpu },
@@ -99,7 +109,7 @@ export default function Navbar() {
           </Link>
 
           {/* Desktop Navigation Links (Role-Aware) */}
-          <nav className="hidden lg:flex items-center gap-1">
+          <nav className="hidden xl:flex items-center gap-1">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.path;
@@ -116,7 +126,7 @@ export default function Navbar() {
                   <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-emerald-600' : 'text-slate-400'}`} />
                   <span>{item.label}</span>
                   {item.badge && (
-                    <span className="px-1.5 py-0.2 rounded-md bg-indigo-100 text-indigo-800 text-[9px] font-extrabold">
+                    <span className="px-1.5 py-0.2 rounded-md bg-purple-100 text-purple-800 text-[9px] font-extrabold">
                       {item.badge}
                     </span>
                   )}
@@ -214,7 +224,7 @@ export default function Navbar() {
             <button
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors focus:outline-none"
+              className="xl:hidden p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors focus:outline-none"
               aria-label="Toggle Navigation Menu"
             >
               {mobileMenuOpen ? <X className="w-5 h-5 text-slate-800" /> : <Menu className="w-5 h-5 text-slate-800" />}
@@ -223,9 +233,9 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Mobile Drawer Navigation (Strictly Role-Filtered) */}
+      {/* Mobile Drawer Navigation (Strictly Role-Filtered & Restored Public Explore Links) */}
       {mobileMenuOpen && (
-        <div className="lg:hidden border-t border-slate-200 bg-white/98 backdrop-blur-lg shadow-xl animate-in slide-in-from-top-2 duration-200">
+        <div className="xl:hidden border-t border-slate-200 bg-white/98 backdrop-blur-lg shadow-xl animate-in slide-in-from-top-2 duration-200">
           <div className="max-w-7xl mx-auto px-4 py-4 space-y-4 max-h-[85vh] overflow-y-auto">
             {isAuthenticated ? (
               <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between">
@@ -257,7 +267,7 @@ export default function Navbar() {
             {/* Menu Items */}
             <div className="space-y-1">
               <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2 mb-1">
-                {isAuthenticated ? `${userRole} Portal Links` : 'Public Navigation'}
+                {isAuthenticated ? `${userRole} Portal Links` : 'Explore EcoCycle'}
               </div>
               {navItems.map((item) => {
                 const Icon = item.icon;
@@ -279,7 +289,7 @@ export default function Navbar() {
                       <span>{item.label}</span>
                     </div>
                     {item.badge && (
-                      <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800">
+                      <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800">
                         {item.badge}
                       </span>
                     )}

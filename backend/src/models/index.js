@@ -10,6 +10,7 @@ const EcoCreditTransaction = require('./EcoCreditTransaction');
 const RecyclerDirectory = require('./RecyclerDirectory');
 const Notification = require('./Notification');
 const AuditLog = require('./AuditLog');
+const PendingRegistration = require('./PendingRegistration');
 
 module.exports = {
   User,
@@ -24,4 +25,5 @@ module.exports = {
   RecyclerDirectory,
   Notification,
   AuditLog,
+  PendingRegistration,
 };
