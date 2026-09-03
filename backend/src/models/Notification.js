@@ -13,6 +13,7 @@ const NotificationSchema = new mongoose.Schema(
       enum: [
         'PROXIMITY_ALERT',
         'REQUEST_UPDATE',
+        'REPORT_VERIFIED',
         'REPORT_RESOLVED',
         'CREDIT_AWARD',
         'SYSTEM_BROADCAST',

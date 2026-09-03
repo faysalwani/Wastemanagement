@@ -4,8 +4,16 @@ const VehicleSchema = new mongoose.Schema(
   {
     vehicleNumber: {
       type: String,
-      required: [true, 'Please provide vehicle registration number'],
-      unique: true,
+      trim: true,
+      uppercase: true,
+    },
+    vehicleId: {
+      type: String,
+      trim: true,
+      uppercase: true,
+    },
+    plateNumber: {
+      type: String,
       trim: true,
       uppercase: true,
     },
@@ -56,6 +64,13 @@ const VehicleSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+VehicleSchema.pre('save', function (next) {
+  if (!this.vehicleNumber && this.vehicleId) this.vehicleNumber = this.vehicleId;
+  if (!this.vehicleId && this.vehicleNumber) this.vehicleId = this.vehicleNumber;
+  if (!this.plateNumber && this.vehicleNumber) this.plateNumber = this.vehicleNumber;
+  next();
+});
 
 VehicleSchema.index({ currentLocation: '2dsphere' });
 

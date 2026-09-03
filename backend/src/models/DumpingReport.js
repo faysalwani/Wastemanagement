@@ -10,7 +10,7 @@ const DumpingReportSchema = new mongoose.Schema(
     },
     photoUrl: {
       type: String,
-      required: [true, 'Please provide photo evidence of dumping'],
+      default: '/uploads/default_dump.jpg',
     },
     location: {
       type: {
@@ -34,12 +34,24 @@ const DumpingReportSchema = new mongoose.Schema(
     },
     wasteCategory: {
       type: String,
-      enum: ['PLASTIC', 'ORGANIC', 'CONSTRUCTION', 'MIXED_DUMP', 'HAZARDOUS', 'OTHER'],
+      enum: [
+        'PLASTIC',
+        'ORGANIC',
+        'CONSTRUCTION',
+        'MIXED_DUMP',
+        'HAZARDOUS',
+        'OTHER',
+        'MIXED_MUNICIPAL',
+        'CONSTRUCTION_DEBRIS',
+        'PLASTIC_POLLUTION',
+        'BIO_ORGANIC',
+        'HAZARDOUS_MEDICAL',
+      ],
       default: 'MIXED_DUMP',
     },
     severity: {
       type: String,
-      enum: ['LOW', 'MEDIUM', 'HIGH'],
+      enum: ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'],
       default: 'MEDIUM',
     },
     description: {
