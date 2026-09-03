@@ -76,6 +76,11 @@ app.get('/api/v1', (req, res) => {
   });
 });
 
+// Swagger OpenAPI 3.0 Interactive Documentation
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpec = require('./config/swaggerSpec');
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
 // Mount Feature API Routes
 const authRoutes = require('./routes/authRoutes');
 const aiRoutes = require('./routes/aiRoutes');
