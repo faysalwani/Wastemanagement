@@ -121,8 +121,17 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 
+const { bootstrapSuperAdmin } = require('./utils/bootstrap');
+
 if (require.main === module) {
-  connectDB().then(() => {
+  connectDB().then(async () => {
+    // Run automated bootstrap for initial Super Admin
+    try {
+      await bootstrapSuperAdmin();
+    } catch (bootErr) {
+      console.error('[Server Error] Initial bootstrap error:', bootErr.message);
+    }
+
     server.listen(PORT, () => {
       console.log(`=======================================================`);
       console.log(`🚀 Smart Waste Management Platform Gateway Online`);
