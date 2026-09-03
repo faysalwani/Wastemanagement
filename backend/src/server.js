@@ -81,11 +81,14 @@ const authRoutes = require('./routes/authRoutes');
 const aiRoutes = require('./routes/aiRoutes');
 const recommendationRoutes = require('./routes/recommendationRoutes');
 const exchangeRoutes = require('./routes/exchangeRoutes');
+const creditRoutes = require('./routes/creditRoutes');
 
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/ai', aiRoutes);
 app.use('/api/v1/recommendations', recommendationRoutes);
 app.use('/api/v1/exchange', exchangeRoutes);
+app.use('/api/v1/credits', creditRoutes);
+app.use('/api/v1/analytics', creditRoutes);
 
 // 404 Handler for undefined routes
 app.use('*', (req, res, next) => {

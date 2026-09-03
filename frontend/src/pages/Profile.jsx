@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   User as UserIcon, 
   Award, 
@@ -10,8 +10,14 @@ import {
   Save, 
   CheckCircle,
   TrendingUp,
-  Sparkles
+  Sparkles,
+  History,
+  Trophy,
+  PieChart as PieIcon,
+  Layers,
+  ArrowUpRight
 } from 'lucide-react';
+import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
 export default function Profile() {
@@ -26,6 +32,29 @@ export default function Profile() {
   });
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // Milestone 8 States: Ledger, Leaderboard, Diversion
+  const [ledger, setLedger] = useState([]);
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [diversionData, setDiversionData] = useState(null);
+  const [activeTab, setActiveTab] = useState('DIVERSION'); // DIVERSION, LEDGER, LEADERBOARD
+
+  useEffect(() => {
+    // Fetch Ledger
+    api.get('/credits/ledger')
+      .then((res) => setLedger(res.data.data || []))
+      .catch(() => setLedger([]));
+
+    // Fetch Leaderboard
+    api.get('/credits/leaderboard')
+      .then((res) => setLeaderboard(res.data.data || []))
+      .catch(() => setLeaderboard([]));
+
+    // Fetch Waste Diversion Metrics
+    api.get('/analytics/diversion')
+      .then((res) => setDiversionData(res.data.data))
+      .catch(() => setDiversionData(null));
+  }, []);
 
   // Compute tier progress
   const credits = user?.ecoCredits || 0;
@@ -71,9 +100,9 @@ export default function Profile() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-10 space-y-8">
+    <div className="max-w-6xl mx-auto px-4 py-10 space-y-8">
       {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 bg-white rounded-3xl border border-slate-200 shadow-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 sm:p-8 bg-white rounded-3xl border border-slate-200 shadow-xs">
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-eco-600 to-emerald-400 flex items-center justify-center text-white text-2xl font-bold shadow-md shadow-eco-500/20">
             {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
@@ -116,7 +145,7 @@ export default function Profile() {
 
       {/* Grid: Eco-Credits Card & Profile Details */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Eco Credits Card */}
+        {/* Eco Credits Summary Card */}
         <div className="md:col-span-1 p-6 bg-gradient-to-br from-emerald-600 to-teal-700 rounded-3xl text-white shadow-lg shadow-eco-600/20 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between">
@@ -159,7 +188,7 @@ export default function Profile() {
           </div>
         </div>
 
-        {/* Profile Details & Form */}
+        {/* Personal & Location Details */}
         <div className="md:col-span-2 p-6 bg-white rounded-3xl border border-slate-200 shadow-xs">
           <div className="flex items-center justify-between pb-4 border-b border-slate-100">
             <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
@@ -200,7 +229,7 @@ export default function Profile() {
               <div className="sm:col-span-2 p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center gap-2 text-slate-600">
                 <MapPin className="w-4 h-4 text-eco-600 flex-shrink-0" />
                 <span>
-                  Registered Coordinates: <strong>{user?.location?.coordinates?.[0] ?? 74.7973}</strong>° E, <strong>{user?.location?.coordinates?.[1] ?? 34.0837}</strong>° N
+                  Coordinates: <strong>{user?.location?.coordinates?.[0] ?? 74.7973}</strong>° E, <strong>{user?.location?.coordinates?.[1] ?? 34.0837}</strong>° N
                 </span>
               </div>
             </div>
@@ -213,7 +242,7 @@ export default function Profile() {
                   required
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-eco-500/20 focus:border-eco-500"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-eco-500/20 focus:border-eco-500"
                 />
               </div>
 
@@ -223,7 +252,7 @@ export default function Profile() {
                   type="tel"
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-eco-500/20 focus:border-eco-500"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm"
                 />
               </div>
 
@@ -233,7 +262,7 @@ export default function Profile() {
                   type="text"
                   value={formData.wardName}
                   onChange={(e) => setFormData({ ...formData, wardName: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-eco-500/20 focus:border-eco-500"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm"
                 />
               </div>
 
@@ -243,7 +272,7 @@ export default function Profile() {
                   type="text"
                   value={formData.address}
                   onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-eco-500/20 focus:border-eco-500"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm"
                 />
               </div>
 
@@ -265,6 +294,256 @@ export default function Profile() {
                 </button>
               </div>
             </form>
+          )}
+        </div>
+      </div>
+
+      {/* Tabs: Diversion Analytics, Transaction Ledger, Leaderboard */}
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
+        <div className="flex border-b border-slate-100 bg-slate-50/60 p-2 gap-2">
+          <button
+            onClick={() => setActiveTab('DIVERSION')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+              activeTab === 'DIVERSION'
+                ? 'bg-white text-slate-900 shadow-xs border border-slate-200/80'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <PieIcon className="w-4 h-4 text-eco-600" />
+            <span>Waste Diversion Analytics</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('LEDGER')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+              activeTab === 'LEDGER'
+                ? 'bg-white text-slate-900 shadow-xs border border-slate-200/80'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <History className="w-4 h-4 text-blue-600" />
+            <span>Transaction Ledger ({ledger.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('LEADERBOARD')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+              activeTab === 'LEADERBOARD'
+                ? 'bg-white text-slate-900 shadow-xs border border-slate-200/80'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <Trophy className="w-4 h-4 text-amber-500" />
+            <span>Srinagar Leaderboard</span>
+          </button>
+        </div>
+
+        <div className="p-6">
+          {/* TAB 1: Waste Diversion Analytics */}
+          {activeTab === 'DIVERSION' && (
+            <div className="space-y-6">
+              {/* Formula & Overall Score */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="p-5 rounded-2xl bg-emerald-50 border border-emerald-200 flex flex-col justify-between">
+                  <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider">
+                    Community Diversion Rate
+                  </span>
+                  <div className="mt-2 text-3xl font-extrabold text-emerald-950">
+                    {diversionData?.diversionRatePercent ?? 72.4}%
+                  </div>
+                  <span className="text-[11px] text-emerald-700 mt-1">
+                    (Reused + Composted + Recycled) / Total Waste
+                  </span>
+                </div>
+
+                <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col justify-between">
+                  <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
+                    Total Diverted Mass
+                  </span>
+                  <div className="mt-2 text-3xl font-extrabold text-slate-900">
+                    {diversionData?.totalDivertedKg ?? 350} kg
+                  </div>
+                  <span className="text-[11px] text-slate-500 mt-1">
+                    Saved from municipal dumping grounds
+                  </span>
+                </div>
+
+                <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col justify-between">
+                  <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
+                    Residual Waste
+                  </span>
+                  <div className="mt-2 text-3xl font-extrabold text-slate-900">
+                    {diversionData?.breakdownKg?.residual ?? 150} kg
+                  </div>
+                  <span className="text-[11px] text-slate-500 mt-1">
+                    Controlled sanitary landfilling stream
+                  </span>
+                </div>
+              </div>
+
+              {/* Data Transparency & Source Tags */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
+                  <div className="flex items-center justify-between font-bold text-slate-800">
+                    <span>{diversionData?.dataSources?.measuredData?.badge}</span>
+                    <span className="text-emerald-700 font-extrabold">
+                      {diversionData?.dataSources?.measuredData?.measuredWeightKg} kg
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    {diversionData?.dataSources?.measuredData?.source} ({diversionData?.dataSources?.measuredData?.totalSmartBins} Active Bins)
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
+                  <div className="flex items-center justify-between font-bold text-slate-800">
+                    <span>{diversionData?.dataSources?.citizenEstimates?.badge}</span>
+                    <span className="text-blue-700 font-extrabold">
+                      {diversionData?.dataSources?.citizenEstimates?.estimatedWeightKg} kg
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    {diversionData?.dataSources?.citizenEstimates?.source}
+                  </p>
+                </div>
+              </div>
+
+              {/* Breakdown Bars */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold text-slate-700">Mass Breakdown by Recovery Stream</h4>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                  <div className="p-3 rounded-xl bg-blue-50 border border-blue-200">
+                    <span className="text-blue-700 font-medium">Reused / Swapped</span>
+                    <div className="text-lg font-bold text-blue-950 mt-0.5">
+                      {diversionData?.breakdownKg?.reused} kg
+                    </div>
+                  </div>
+                  <div className="p-3 rounded-xl bg-lime-50 border border-lime-200">
+                    <span className="text-lime-700 font-medium">Composted</span>
+                    <div className="text-lg font-bold text-lime-950 mt-0.5">
+                      {diversionData?.breakdownKg?.composted} kg
+                    </div>
+                  </div>
+                  <div className="p-3 rounded-xl bg-amber-50 border border-amber-200">
+                    <span className="text-amber-700 font-medium">Recycled Material</span>
+                    <div className="text-lg font-bold text-amber-950 mt-0.5">
+                      {diversionData?.breakdownKg?.recycled} kg
+                    </div>
+                  </div>
+                  <div className="p-3 rounded-xl bg-slate-100 border border-slate-300">
+                    <span className="text-slate-600 font-medium">Residual Waste</span>
+                    <div className="text-lg font-bold text-slate-900 mt-0.5">
+                      {diversionData?.breakdownKg?.residual} kg
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 2: Immutable Transaction Ledger */}
+          {activeTab === 'LEDGER' && (
+            <div className="space-y-4">
+              {ledger.length === 0 ? (
+                <div className="py-12 text-center text-xs text-slate-500">
+                  No eco-credit transactions recorded yet. Complete a waste scan or resource exchange to earn credits!
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-slate-200 text-slate-500 font-semibold">
+                        <th className="py-2.5 px-3">Date</th>
+                        <th className="py-2.5 px-3">Activity</th>
+                        <th className="py-2.5 px-3">Credits</th>
+                        <th className="py-2.5 px-3">Balance After</th>
+                        <th className="py-2.5 px-3">Idempotency Hash</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {ledger.map((tx) => (
+                        <tr key={tx._id} className="hover:bg-slate-50/50">
+                          <td className="py-2.5 px-3 text-slate-500">
+                            {new Date(tx.timestamp).toLocaleDateString()}
+                          </td>
+                          <td className="py-2.5 px-3 font-semibold text-slate-800">
+                            {tx.activityType.replace(/_/g, ' ')}
+                            <div className="text-[10px] text-slate-400 font-normal">{tx.description}</div>
+                          </td>
+                          <td className="py-2.5 px-3 font-extrabold text-emerald-600">
+                            +{tx.creditsEarned}
+                          </td>
+                          <td className="py-2.5 px-3 font-bold text-slate-700">
+                            {tx.balanceAfter} pts
+                          </td>
+                          <td className="py-2.5 px-3 font-mono text-[10px] text-slate-400 truncate max-w-xs">
+                            {tx.idempotencyKey}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 3: Leaderboard */}
+          {activeTab === 'LEADERBOARD' && (
+            <div className="space-y-3">
+              <div className="text-xs text-slate-500 mb-2">
+                Top citizens leading source segregation and circular resource recovery across Srinagar:
+              </div>
+              <div className="space-y-2">
+                {leaderboard.map((u) => {
+                  const isCurrentUser = user && u.userId === user.id;
+                  return (
+                    <div
+                      key={u.userId}
+                      className={`flex items-center justify-between p-3.5 rounded-2xl border transition-all ${
+                        isCurrentUser
+                          ? 'bg-emerald-50/70 border-emerald-300 shadow-2xs'
+                          : 'bg-white border-slate-200'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs ${
+                          u.rank === 1
+                            ? 'bg-amber-100 text-amber-800'
+                            : u.rank === 2
+                            ? 'bg-slate-200 text-slate-700'
+                            : u.rank === 3
+                            ? 'bg-amber-50 text-amber-700'
+                            : 'bg-slate-100 text-slate-600'
+                        }`}>
+                          {u.rank === 1 ? '🥇' : u.rank === 2 ? '🥈' : u.rank === 3 ? '🥉' : u.rank}
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                            <span>{u.displayName}</span>
+                            {isCurrentUser && (
+                              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.2 rounded-md">
+                                You
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-[11px] text-slate-500">{u.wardName}</span>
+                        </div>
+                      </div>
+
+                      <div className="text-right">
+                        <div className="text-sm font-extrabold text-emerald-700">
+                          {u.ecoCredits} <span className="text-[10px] font-medium">pts</span>
+                        </div>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase">
+                          {u.tier}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           )}
         </div>
       </div>
