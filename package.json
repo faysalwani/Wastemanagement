@@ -1,0 +1,19 @@
+{
+  "name": "smart-waste-management-system",
+  "version": "1.0.0",
+  "description": "An IoT-Based Intelligent Waste Management and Resource Recovery System for Local Communities (M.Sc. AI & ML Major Project)",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -n \"BACKEND,FRONTEND\" -c \"blue,green\" \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "dev:simulator": "node iot/simulator/fleet_simulator.js",
+    "install:all": "npm install && npm --prefix backend install && npm --prefix frontend install",
+    "test": "npm --prefix backend test"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "author": "Mohd Faisal Wani (NDU202500069)",
+  "license": "MIT"
+}
