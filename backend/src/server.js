@@ -76,6 +76,10 @@ app.get('/api/v1', (req, res) => {
   });
 });
 
+// Mount Feature API Routes
+const authRoutes = require('./routes/authRoutes');
+app.use('/api/v1/auth', authRoutes);
+
 // 404 Handler for undefined routes
 app.use('*', (req, res, next) => {
   res.status(404).json({
