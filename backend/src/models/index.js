@@ -9,6 +9,7 @@ const ResourceListing = require('./ResourceListing');
 const EcoCreditTransaction = require('./EcoCreditTransaction');
 const RecyclerDirectory = require('./RecyclerDirectory');
 const Notification = require('./Notification');
+const AuditLog = require('./AuditLog');
 
 module.exports = {
   User,
@@ -22,4 +23,5 @@ module.exports = {
   EcoCreditTransaction,
   RecyclerDirectory,
   Notification,
+  AuditLog,
 };

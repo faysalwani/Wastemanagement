@@ -29,7 +29,7 @@ const UserSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['CITIZEN', 'DRIVER', 'ADMIN'],
+      enum: ['CITIZEN', 'DRIVER', 'ADMIN', 'SUPER_ADMIN'],
       default: 'CITIZEN',
     },
     phone: {
@@ -70,6 +70,24 @@ const UserSchema = new mongoose.Schema(
     isActive: {
       type: Boolean,
       default: true,
+    },
+    // OTP Security Fields
+    otpHash: {
+      type: String,
+      select: false,
+    },
+    otpExpires: {
+      type: Date,
+      select: false,
+    },
+    otpAttempts: {
+      type: Number,
+      default: 0,
+      select: false,
+    },
+    otpCooldownUntil: {
+      type: Date,
+      select: false,
     },
   },
   {

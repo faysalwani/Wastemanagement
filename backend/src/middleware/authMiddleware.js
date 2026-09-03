@@ -63,18 +63,34 @@ const protect = async (req, res, next) => {
   }
 };
 
-// Grant access to specific roles (RBAC Guard)
+// Grant access to specific roles (RBAC Guard with SUPER_ADMIN hierarchy)
 const authorize = (...roles) => {
   return (req, res, next) => {
-    if (!req.user || !roles.includes(req.user.role)) {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        error: { code: 401, message: 'Authentication required.' },
+      });
+    }
+
+    const userRole = req.user.role;
+
+    // Direct match
+    const hasRole = roles.includes(userRole);
+
+    // Hierarchy: SUPER_ADMIN has access to any endpoint authorized for ADMIN
+    const isSuperAdminInherited = userRole === 'SUPER_ADMIN' && roles.includes('ADMIN');
+
+    if (!hasRole && !isSuperAdminInherited) {
       return res.status(403).json({
         success: false,
         error: {
           code: 403,
-          message: `Forbidden: User role '${req.user ? req.user.role : 'GUEST'}' is unauthorized to perform this action. Required role(s): ${roles.join(', ')}`,
+          message: `Forbidden: User role '${userRole}' is unauthorized to perform this action. Required role(s): ${roles.join(', ')}`,
         },
       });
     }
+
     next();
   };
 };

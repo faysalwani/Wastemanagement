@@ -14,7 +14,10 @@ import Compost from './pages/Compost';
 import Collection from './pages/Collection';
 import Reports from './pages/Reports';
 import SmartBins from './pages/SmartBins';
+import CitizenDashboard from './pages/CitizenDashboard';
+import DriverDashboard from './pages/DriverDashboard';
 import AdminHub from './pages/AdminHub';
+import SuperAdminDashboard from './pages/SuperAdminDashboard';
 
 export default function App() {
   return (
@@ -25,10 +28,46 @@ export default function App() {
             <Navbar />
             <main className="flex-1">
               <Routes>
-                {/* Public & Core Feature Routes */}
+                {/* Public Routes */}
                 <Route path="/" element={<Home />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
+
+                {/* Role-Specific Dashboards */}
+                <Route
+                  path="/citizen"
+                  element={
+                    <ProtectedRoute allowedRoles={['CITIZEN', 'ADMIN', 'SUPER_ADMIN']}>
+                      <CitizenDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/driver"
+                  element={
+                    <ProtectedRoute allowedRoles={['DRIVER', 'SUPER_ADMIN']}>
+                      <DriverDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin"
+                  element={
+                    <ProtectedRoute allowedRoles={['ADMIN', 'SUPER_ADMIN']}>
+                      <AdminHub />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/super-admin"
+                  element={
+                    <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
+                      <SuperAdminDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+
+                {/* Core Feature Modules */}
                 <Route path="/scan" element={<Scan />} />
                 <Route path="/exchange" element={<Exchange />} />
                 <Route path="/compost" element={<Compost />} />
@@ -42,16 +81,6 @@ export default function App() {
                   element={
                     <ProtectedRoute>
                       <Profile />
-                    </ProtectedRoute>
-                  }
-                />
-
-                {/* Role-Guarded Administrative Hub */}
-                <Route
-                  path="/admin"
-                  element={
-                    <ProtectedRoute allowedRoles={['ADMIN']}>
-                      <AdminHub />
                     </ProtectedRoute>
                   }
                 />

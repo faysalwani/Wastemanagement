@@ -5,7 +5,6 @@ import {
   UserPlus, 
   AlertCircle, 
   MapPin, 
-  CheckCircle, 
   Navigation, 
   Eye, 
   EyeOff, 
@@ -13,10 +12,9 @@ import {
   Mail, 
   User, 
   Phone, 
-  Truck, 
-  ShieldCheck, 
   Sparkles,
-  Key
+  CheckCircle2,
+  ArrowRight
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -34,14 +32,12 @@ const SRINAGAR_WARDS = [
 ];
 
 export default function Register() {
-  const [role, setRole] = useState('CITIZEN'); // CITIZEN, DRIVER, ADMIN
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
     password: '',
     confirmPassword: '',
-    adminSecret: '',
     wardName: 'Lal Chowk',
     address: '',
     coordinates: [74.7973, 34.0837],
@@ -56,7 +52,7 @@ export default function Register() {
   const { register } = useAuth();
   const navigate = useNavigate();
 
-  // Password strength calculator
+  // Dynamic Password Strength Meter
   const getPasswordStrength = (pass) => {
     if (!pass) return { score: 0, label: '', color: 'bg-slate-200' };
     if (pass.length < 6) return { score: 1, label: 'Too short', color: 'bg-rose-500' };
@@ -90,7 +86,7 @@ export default function Register() {
         setDetectingGps(false);
       },
       (err) => {
-        setError('Could not access device GPS. Default coordinates applied.');
+        setError('Could not access device GPS. Default ward coordinates applied.');
         setDetectingGps(false);
       },
       { timeout: 10000, enableHighAccuracy: true }
@@ -111,11 +107,6 @@ export default function Register() {
       return;
     }
 
-    if (role === 'ADMIN' && !formData.adminSecret) {
-      setError('Please provide the Administrator Secret Key.');
-      return;
-    }
-
     setSubmitting(true);
 
     try {
@@ -124,8 +115,6 @@ export default function Register() {
         email: formData.email,
         password: formData.password,
         phone: formData.phone,
-        role,
-        adminSecret: role === 'ADMIN' ? formData.adminSecret : undefined,
         wardName: formData.wardName,
         address: formData.address,
         coordinates: formData.coordinates,
@@ -133,7 +122,7 @@ export default function Register() {
 
       const res = await register(payload);
       if (res.success) {
-        navigate('/profile', { replace: true });
+        navigate('/citizen', { replace: true });
       }
     } catch (err) {
       setError(
@@ -154,67 +143,20 @@ export default function Register() {
             <Recycle className="w-6 h-6" />
           </div>
           <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-            Create Real Account
+            Create Citizen Account
           </h2>
           <p className="text-xs text-slate-500">
-            Join the Srinagar intelligent circular waste and resource recovery network
+            Join the Srinagar municipal smart waste segregation and resource recovery network
           </p>
         </div>
 
-        {/* Role Selector Tabs */}
-        <div className="space-y-1.5">
-          <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-            Select Account Role *
-          </label>
-          <div className="grid grid-cols-3 gap-2 p-1.5 rounded-2xl bg-slate-100/80 border border-slate-200 text-xs font-semibold">
-            <button
-              type="button"
-              onClick={() => setRole('CITIZEN')}
-              className={`py-2 px-2 rounded-xl transition-all flex flex-col items-center gap-1 ${
-                role === 'CITIZEN'
-                  ? 'bg-white text-emerald-800 shadow-xs font-bold border border-emerald-200'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <User className="w-4 h-4 text-emerald-600" />
-              <span>Citizen</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setRole('DRIVER')}
-              className={`py-2 px-2 rounded-xl transition-all flex flex-col items-center gap-1 ${
-                role === 'DRIVER'
-                  ? 'bg-white text-amber-800 shadow-xs font-bold border border-amber-200'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <Truck className="w-4 h-4 text-amber-600" />
-              <span>Driver</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setRole('ADMIN')}
-              className={`py-2 px-2 rounded-xl transition-all flex flex-col items-center gap-1 ${
-                role === 'ADMIN'
-                  ? 'bg-white text-indigo-800 shadow-xs font-bold border border-indigo-200'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <ShieldCheck className="w-4 h-4 text-indigo-600" />
-              <span>Admin</span>
-            </button>
-          </div>
+        {/* Informational Callout */}
+        <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+          <span>
+            Citizen registration grants access to AI Waste Scanning, Household Composting, P2P Exchanges, and Eco-Credits.
+          </span>
         </div>
-
-        {/* Welcome Bonus Callout */}
-        {role === 'CITIZEN' && (
-          <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-            <span>New citizen accounts receive a <strong className="font-bold">+20 Eco-Credits welcome bonus</strong>!</span>
-          </div>
-        )}
 
         {/* Error Banner */}
         {error && (
@@ -224,28 +166,8 @@ export default function Register() {
           </div>
         )}
 
-        {/* Real Registration Form */}
+        {/* Pure Citizen Registration Form */}
         <form className="space-y-4" onSubmit={handleSubmit}>
-          {/* Admin Secret Key (Only if Admin role selected) */}
-          {role === 'ADMIN' && (
-            <div className="p-3.5 rounded-2xl bg-indigo-50 border border-indigo-200 space-y-1">
-              <label className="block text-xs font-bold text-indigo-900">
-                Administrator Verification Key *
-              </label>
-              <div className="relative">
-                <Key className="w-4 h-4 text-indigo-500 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="password"
-                  required
-                  placeholder="Enter admin secret (Default: SrinagarAdmin2026)"
-                  value={formData.adminSecret}
-                  onChange={(e) => setFormData({ ...formData, adminSecret: e.target.value })}
-                  className="w-full pl-9 pr-3 py-2 rounded-xl border border-indigo-200 text-xs bg-white"
-                />
-              </div>
-            </div>
-          )}
-
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
@@ -291,7 +213,7 @@ export default function Register() {
                 type="email"
                 required
                 autoComplete="email"
-                placeholder="faisal@example.com"
+                placeholder="citizen@example.com"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none"
@@ -374,7 +296,7 @@ export default function Register() {
               </label>
               <input
                 type="text"
-                placeholder="e.g. Near Bund Road"
+                placeholder="e.g. Bund Road, Near Footbridge"
                 value={formData.address}
                 onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs outline-none"
@@ -382,7 +304,7 @@ export default function Register() {
             </div>
           </div>
 
-          {/* GPS Coordinates Locker */}
+          {/* GPS Location Auto-Detection */}
           <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between">
             <div className="text-xs text-slate-600">
               <span className="font-semibold block text-[11px] text-slate-400 uppercase">Geographic Location</span>
@@ -409,7 +331,7 @@ export default function Register() {
             ) : (
               <UserPlus className="w-4 h-4" />
             )}
-            <span>{submitting ? 'Registering Account...' : 'Create Real Account'}</span>
+            <span>{submitting ? 'Registering Citizen...' : 'Create Citizen Account'}</span>
           </button>
         </form>
 
@@ -417,7 +339,7 @@ export default function Register() {
           <p className="text-xs text-slate-500">
             Already registered?{' '}
             <Link to="/login" className="font-bold text-emerald-700 hover:underline">
-              Sign in to Account
+              Sign in with Email or OTP
             </Link>
           </p>
         </div>

@@ -13,6 +13,22 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const { socket } = useSocket() || {};
 
+  // Helper to determine destination dashboard by role
+  const getDashboardRoute = (targetUser) => {
+    const role = targetUser?.role || user?.role;
+    switch (role) {
+      case 'SUPER_ADMIN':
+        return '/super-admin';
+      case 'ADMIN':
+        return '/admin';
+      case 'DRIVER':
+        return '/driver';
+      case 'CITIZEN':
+      default:
+        return '/citizen';
+    }
+  };
+
   // Verify and refresh session on mount
   useEffect(() => {
     const initAuth = async () => {
@@ -45,6 +61,27 @@ export const AuthProvider = ({ children }) => {
     }
   }, [socket, user]);
 
+  // Request 6-digit OTP
+  const sendOtp = async (email) => {
+    const res = await api.post('/auth/send-otp', { email });
+    return res.data;
+  };
+
+  // Verify OTP and establish session
+  const verifyOtp = async (email, otp) => {
+    const res = await api.post('/auth/verify-otp', { email, otp });
+    if (res.data.success) {
+      const { token: receivedToken, user: receivedUser } = res.data;
+      setToken(receivedToken);
+      setUser(receivedUser);
+      localStorage.setItem('token', receivedToken);
+      localStorage.setItem('user', JSON.stringify(receivedUser));
+      return { success: true, user: receivedUser, dashboardRoute: getDashboardRoute(receivedUser) };
+    }
+    return { success: false, message: res.data.message };
+  };
+
+  // Password login fallback
   const login = async (email, password) => {
     const res = await api.post('/auth/login', { email, password });
     if (res.data.success) {
@@ -53,11 +90,12 @@ export const AuthProvider = ({ children }) => {
       setUser(receivedUser);
       localStorage.setItem('token', receivedToken);
       localStorage.setItem('user', JSON.stringify(receivedUser));
-      return { success: true, user: receivedUser };
+      return { success: true, user: receivedUser, dashboardRoute: getDashboardRoute(receivedUser) };
     }
     return { success: false, message: res.data.message };
   };
 
+  // Public Citizen Registration
   const register = async (userData) => {
     const res = await api.post('/auth/register', userData);
     if (res.data.success) {
@@ -66,7 +104,7 @@ export const AuthProvider = ({ children }) => {
       setUser(receivedUser);
       localStorage.setItem('token', receivedToken);
       localStorage.setItem('user', JSON.stringify(receivedUser));
-      return { success: true, user: receivedUser };
+      return { success: true, user: receivedUser, dashboardRoute: '/citizen' };
     }
     return { success: false, message: res.data.message };
   };
@@ -107,14 +145,14 @@ export const AuthProvider = ({ children }) => {
         token,
         loading,
         isAuthenticated: !!token && !!user,
-        isAdmin: user?.role === 'ADMIN',
-        isDriver: user?.role === 'DRIVER',
-        isCitizen: user?.role === 'CITIZEN',
+        sendOtp,
+        verifyOtp,
         login,
         register,
         logout,
         updateUserProfile,
         refreshUser,
+        getDashboardRoute,
       }}
     >
       {children}
@@ -122,4 +160,10 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};

@@ -91,6 +91,7 @@ const iotRoutes = require('./routes/iotRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const routeRoutes = require('./routes/routeRoutes');
 const trackingRoutes = require('./routes/trackingRoutes');
+const superAdminRoutes = require('./routes/superAdminRoutes');
 
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/ai', aiRoutes);
@@ -102,6 +103,7 @@ app.use('/api/v1/iot', iotRoutes);
 app.use('/api/v1/reports', reportRoutes);
 app.use('/api/v1/routes', routeRoutes);
 app.use('/api/v1/tracking', trackingRoutes);
+app.use('/api/v1/super-admin', superAdminRoutes);
 
 // 404 Handler for undefined routes
 app.use('*', (req, res, next) => {

@@ -31,6 +31,19 @@ const seedData = async () => {
     console.log('[Seeder] Creating standard system users...');
 
     // 1. Create Core Users
+    const superAdminUser = await User.create({
+      name: 'Central Super Administrator',
+      email: 'superadmin@ecocycle.local',
+      password: 'SuperAdmin@123',
+      role: 'SUPER_ADMIN',
+      phone: '+91 9419000000',
+      wardName: 'Lal Chowk',
+      address: 'SMC Directorate, Srinagar',
+      location: { type: 'Point', coordinates: [74.8080, 34.0725] },
+      ecoCredits: 1000,
+      tier: 'ECO_CHAMPION',
+    });
+
     const adminUser = await User.create({
       name: 'Dr. Municipal Administrator',
       email: 'admin@ecocycle.local',
