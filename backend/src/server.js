@@ -80,10 +80,12 @@ app.get('/api/v1', (req, res) => {
 const authRoutes = require('./routes/authRoutes');
 const aiRoutes = require('./routes/aiRoutes');
 const recommendationRoutes = require('./routes/recommendationRoutes');
+const exchangeRoutes = require('./routes/exchangeRoutes');
 
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/ai', aiRoutes);
 app.use('/api/v1/recommendations', recommendationRoutes);
+app.use('/api/v1/exchange', exchangeRoutes);
 
 // 404 Handler for undefined routes
 app.use('*', (req, res, next) => {
