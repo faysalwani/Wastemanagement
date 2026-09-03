@@ -10,14 +10,17 @@ import {
   Cpu, 
   LayoutDashboard, 
   Award,
-  Wifi,
-  WifiOff
+  LogIn,
+  UserCheck,
+  LogOut
 } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
+import { useAuth } from '../context/AuthContext';
 
 export default function Navbar() {
   const location = useLocation();
   const { isConnected } = useSocket() || {};
+  const { user, isAuthenticated, logout } = useAuth() || {};
   
   const navItems = [
     { path: '/scan', label: 'AI Scanner', icon: Camera },
@@ -30,13 +33,13 @@ export default function Navbar() {
   ];
 
   return (
-    <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm transition-all">
+    <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-xs transition-all">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Brand Logo */}
           <Link to="/" className="flex items-center gap-3 group">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-eco-600 to-emerald-400 flex items-center justify-center text-white shadow-md shadow-eco-500/20 group-hover:scale-105 transition-transform">
-              <Recycle className="w-6 h-6 animate-spin-slow" />
+              <Recycle className="w-6 h-6" />
             </div>
             <div>
               <span className="font-bold text-lg bg-gradient-to-r from-slate-900 via-eco-800 to-eco-600 bg-clip-text text-transparent block leading-tight">
@@ -59,7 +62,7 @@ export default function Navbar() {
                   to={item.path}
                   className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
                     isActive
-                      ? 'bg-eco-50 text-eco-700 shadow-xs border border-eco-200/60'
+                      ? 'bg-eco-50 text-eco-700 shadow-2xs border border-eco-200/60'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
                   }`}
                 >
@@ -71,7 +74,7 @@ export default function Navbar() {
           </nav>
 
           {/* Right Status & Action Items */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             {/* Live WebSocket Indicator */}
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 border border-slate-200 text-[11px] font-medium text-slate-600">
               {isConnected ? (
@@ -80,7 +83,7 @@ export default function Navbar() {
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                   </span>
-                  <span className="hidden sm:inline">Live Sync</span>
+                  <span className="hidden sm:inline">Live</span>
                 </>
               ) : (
                 <>
@@ -90,14 +93,54 @@ export default function Navbar() {
               )}
             </div>
 
-            {/* Eco Credits Pill */}
-            <Link 
-              to="/profile" 
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-50 to-emerald-50 border border-amber-200/80 text-xs font-bold text-amber-900 hover:shadow-xs transition-shadow"
-            >
-              <Award className="w-4 h-4 text-amber-600" />
-              <span>120 Credits</span>
-            </Link>
+            {isAuthenticated ? (
+              <div className="flex items-center gap-2">
+                {/* Eco Credits Pill */}
+                <Link 
+                  to="/profile" 
+                  className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-50 to-emerald-50 border border-amber-200/80 text-xs font-bold text-amber-900 hover:shadow-2xs transition-shadow"
+                >
+                  <Award className="w-3.5 h-3.5 text-amber-600" />
+                  <span>{user?.ecoCredits || 0} pts</span>
+                </Link>
+
+                {/* Profile Pill */}
+                <Link
+                  to="/profile"
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-slate-800 transition-colors"
+                >
+                  <div className="w-5 h-5 rounded-full bg-eco-600 text-white flex items-center justify-center text-[10px] font-bold">
+                    {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                  </div>
+                  <span className="hidden sm:inline">{user?.name?.split(' ')[0]}</span>
+                </Link>
+
+                {/* Quick Logout */}
+                <button
+                  onClick={logout}
+                  title="Sign Out"
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Link
+                  to="/login"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-slate-800 transition-colors"
+                >
+                  <LogIn className="w-3.5 h-3.5 text-slate-600" />
+                  <span>Sign In</span>
+                </Link>
+                <Link
+                  to="/register"
+                  className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-eco-600 hover:bg-eco-700 text-white text-xs font-semibold shadow-xs transition-all"
+                >
+                  <span>Register</span>
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       </div>
