@@ -52,6 +52,12 @@ export default function Exchange() {
   const [actionError, setActionError] = useState(null);
   const [actionSuccess, setActionSuccess] = useState(null);
 
+  // Subtab State: MARKETPLACE or MY_LISTINGS
+  const [viewMode, setViewMode] = useState('MARKETPLACE');
+  const [myListings, setMyListings] = useState([]);
+  const [myCounts, setMyCounts] = useState({ total: 0, available: 0, reserved: 0, completed: 0, cancelled: 0 });
+  const [loadingMy, setLoadingMy] = useState(false);
+
   // Form State for creating a listing
   const [formData, setFormData] = useState({
     title: '',
@@ -86,9 +92,40 @@ export default function Exchange() {
     }
   };
 
+  const fetchMyListings = async () => {
+    if (!isAuthenticated) return;
+    setLoadingMy(true);
+    try {
+      const res = await api.get('/exchange/my-listings');
+      if (res.data.success) {
+        setMyListings(res.data.data);
+        setMyCounts(res.data.counts);
+      }
+    } catch (err) {
+      console.error('Failed to fetch my listings:', err);
+    } finally {
+      setLoadingMy(false);
+    }
+  };
+
+  const handleCancelListing = async (listingId) => {
+    try {
+      const res = await api.patch(`/exchange/listings/${listingId}/cancel`);
+      if (res.data.success) {
+        setActionSuccess('Resource listing cancelled.');
+        fetchMyListings();
+        fetchListings();
+        setTimeout(() => setActionSuccess(null), 3000);
+      }
+    } catch (err) {
+      setActionError(err.response?.data?.error?.message || 'Failed to cancel listing.');
+    }
+  };
+
   useEffect(() => {
     fetchListings();
-  }, [selectedCategory, selectedWard]);
+    if (isAuthenticated) fetchMyListings();
+  }, [selectedCategory, selectedWard, isAuthenticated]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -225,201 +262,344 @@ export default function Exchange() {
         </div>
       )}
 
-      {/* Filter and Search Controls */}
-      <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-xs space-y-4">
-        {/* Category Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => setSelectedCategory(cat.id)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
-                selectedCategory === cat.id
-                  ? 'bg-slate-900 text-white shadow-2xs'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
-            >
-              {cat.label}
-            </button>
-          ))}
-        </div>
+      {/* Subtab Toggle Navigation */}
+      <div className="flex items-center gap-2 border-b border-slate-200 pb-1">
+        <button
+          onClick={() => setViewMode('MARKETPLACE')}
+          className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 ${
+            viewMode === 'MARKETPLACE'
+              ? 'bg-slate-900 text-white shadow-xs'
+              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+          }`}
+        >
+          <Repeat className="w-4 h-4 text-blue-400" />
+          <span>Explore Marketplace ({listings.length})</span>
+        </button>
 
-        {/* Search & Ward Row */}
-        <div className="flex flex-col sm:flex-row items-center gap-3 pt-2 border-t border-slate-100">
-          <form onSubmit={handleSearchSubmit} className="relative flex-1 w-full">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search vegetable scraps, cardboard cartons, glass jars..."
-              className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-eco-500/20 focus:border-eco-500"
-            />
-          </form>
-
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <Filter className="w-4 h-4 text-slate-400 flex-shrink-0" />
-            <select
-              value={selectedWard}
-              onChange={(e) => setSelectedWard(e.target.value)}
-              className="w-full sm:w-auto px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-700 bg-white focus:outline-none"
-            >
-              {SRINAGAR_WARDS.map((w) => (
-                <option key={w} value={w}>
-                  {w}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
+        {isAuthenticated && (
+          <button
+            onClick={() => {
+              setViewMode('MY_LISTINGS');
+              fetchMyListings();
+            }}
+            className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 ${
+              viewMode === 'MY_LISTINGS'
+                ? 'bg-slate-900 text-white shadow-xs'
+                : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+            }`}
+          >
+            <Package className="w-4 h-4 text-emerald-400" />
+            <span>My Listings ({myCounts.total})</span>
+          </button>
+        )}
       </div>
 
-      {/* Listings Grid */}
-      {loading ? (
-        <div className="py-20 text-center">
-          <div className="w-8 h-8 mx-auto border-4 border-eco-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="mt-3 text-xs text-slate-500">Loading marketplace listings...</p>
-        </div>
-      ) : listings.length === 0 ? (
-        <div className="bg-white p-12 rounded-3xl border border-slate-200 text-center space-y-3">
-          <Package className="w-10 h-10 text-slate-300 mx-auto" />
-          <h3 className="text-base font-bold text-slate-800">No resources found</h3>
-          <p className="text-xs text-slate-500 max-w-sm mx-auto">
-            No active listings match your current filters. Be the first to offer reusable items in your locality!
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {listings.map((item) => {
-            const isOwner = user && item.ownerId?._id === user.id;
-            const isClaimant = user && item.claimedById?._id === user.id;
+      {/* VIEW 1: MARKETPLACE */}
+      {viewMode === 'MARKETPLACE' && (
+        <div className="space-y-8">
+          {/* Filter and Search Controls */}
+          <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-xs space-y-4">
+            {/* Category Pills */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+              {CATEGORIES.map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => setSelectedCategory(cat.id)}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+                    selectedCategory === cat.id
+                      ? 'bg-slate-900 text-white shadow-2xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  {cat.label}
+                </button>
+              ))}
+            </div>
 
-            return (
-              <div
-                key={item._id}
-                className="bg-white rounded-3xl border border-slate-200 shadow-xs hover:shadow-md transition-shadow overflow-hidden flex flex-col justify-between"
-              >
-                <div>
-                  {/* Image or Category Header */}
-                  <div className="h-40 bg-slate-100 border-b border-slate-100 relative overflow-hidden flex items-center justify-center">
-                    {item.photoUrl ? (
-                      <img
-                        src={item.photoUrl}
-                        alt={item.title}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex flex-col items-center gap-1 text-slate-400">
-                        <Repeat className="w-8 h-8 text-slate-300" />
-                        <span className="text-[10px] font-medium uppercase tracking-wider">
-                          Resource Listing
-                        </span>
+            {/* Search & Ward Row */}
+            <div className="flex flex-col sm:flex-row items-center gap-3 pt-2 border-t border-slate-100">
+              <form onSubmit={handleSearchSubmit} className="relative flex-1 w-full">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search vegetable scraps, cardboard cartons, glass jars..."
+                  className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-eco-500/20 focus:border-eco-500"
+                />
+              </form>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <Filter className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                <select
+                  value={selectedWard}
+                  onChange={(e) => setSelectedWard(e.target.value)}
+                  className="w-full sm:w-auto px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-700 bg-white focus:outline-none"
+                >
+                  {SRINAGAR_WARDS.map((w) => (
+                    <option key={w} value={w}>
+                      {w}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Listings Grid */}
+          {loading ? (
+            <div className="py-20 text-center">
+              <div className="w-8 h-8 mx-auto border-4 border-eco-500 border-t-transparent rounded-full animate-spin"></div>
+              <p className="mt-3 text-xs text-slate-500">Loading marketplace listings...</p>
+            </div>
+          ) : listings.length === 0 ? (
+            <div className="bg-white p-12 rounded-3xl border border-slate-200 text-center space-y-3">
+              <Package className="w-10 h-10 text-slate-300 mx-auto" />
+              <h3 className="text-base font-bold text-slate-800">No resources found</h3>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                No active listings match your current filters. Be the first to offer reusable items in your locality!
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {listings.map((item) => {
+                const isOwner = user && item.ownerId?._id === user.id;
+                const isClaimant = user && item.claimedById?._id === user.id;
+
+                return (
+                  <div
+                    key={item._id}
+                    className="bg-white rounded-3xl border border-slate-200 shadow-xs hover:shadow-md transition-shadow overflow-hidden flex flex-col justify-between"
+                  >
+                    <div>
+                      {/* Image or Category Header */}
+                      <div className="h-40 bg-slate-100 border-b border-slate-100 relative overflow-hidden flex items-center justify-center">
+                        {item.photoUrl ? (
+                          <img
+                            src={item.photoUrl}
+                            alt={item.title}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex flex-col items-center gap-1 text-slate-400">
+                            <Repeat className="w-8 h-8 text-slate-300" />
+                            <span className="text-[10px] font-medium uppercase tracking-wider">
+                              Resource Listing
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Status Badge */}
+                        <div className="absolute top-3 right-3">
+                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase shadow-2xs ${
+                            item.status === 'AVAILABLE'
+                              ? 'bg-emerald-500 text-white'
+                              : item.status === 'RESERVED'
+                              ? 'bg-amber-500 text-white'
+                              : item.status === 'COMPLETED'
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-slate-400 text-white'
+                          }`}>
+                            {item.status}
+                          </span>
+                        </div>
+
+                        {/* Quantity Pill */}
+                        <div className="absolute bottom-3 left-3 px-2.5 py-1 rounded-lg bg-slate-900/80 backdrop-blur-xs text-white text-[11px] font-bold">
+                          {item.quantity} {item.quantityUnit}
+                        </div>
                       </div>
-                    )}
 
-                    {/* Status Badge */}
-                    <div className="absolute top-3 right-3">
-                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase shadow-2xs ${
+                      {/* Card Content */}
+                      <div className="p-5 space-y-3">
+                        <div className="flex items-center justify-between text-[11px] text-slate-500">
+                          <span className="font-semibold text-eco-700 uppercase tracking-wider">
+                            {item.category.replace(/_/g, ' ')}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <MapPin className="w-3 h-3 text-slate-400" />
+                            {item.wardName}
+                          </span>
+                        </div>
+
+                        <h3 className="font-bold text-slate-900 text-sm leading-snug line-clamp-1">
+                          {item.title}
+                        </h3>
+
+                        {item.description && (
+                          <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed">
+                            {item.description}
+                          </p>
+                        )}
+
+                        <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                          <span className="flex items-center gap-1">
+                            <User className="w-3.5 h-3.5 text-slate-400" />
+                            {item.ownerId?.name || 'Community Member'}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3.5 h-3.5 text-slate-400" />
+                            {new Date(item.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Card Action Footer */}
+                    <div className="p-5 pt-0">
+                      {item.status === 'AVAILABLE' && (
+                        <button
+                          onClick={() => {
+                            if (!isAuthenticated) {
+                              window.location.href = '/login';
+                              return;
+                            }
+                            setActionError(null);
+                            setClaimModalListing(item);
+                          }}
+                          disabled={isOwner}
+                          className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-2xs transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          {isOwner ? 'Own Listing' : 'Claim Resource'}
+                        </button>
+                      )}
+
+                      {item.status === 'RESERVED' && (
+                        <div className="space-y-2">
+                          <div className="p-2 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-800 text-center font-medium">
+                            Reserved by {item.claimedById?.name || 'Citizen'}
+                          </div>
+                          {(isOwner || isClaimant || user?.role === 'ADMIN') && (
+                            <button
+                              onClick={() => handleComplete(item._id)}
+                              className="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-2xs transition-colors"
+                            >
+                              Mark Handover Completed (+25 pts)
+                            </button>
+                          )}
+                        </div>
+                      )}
+
+                      {item.status === 'COMPLETED' && (
+                        <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-[11px] text-emerald-800 flex items-center justify-center gap-1.5 font-bold">
+                          <Award className="w-3.5 h-3.5 text-amber-500" />
+                          <span>Successfully Diverted! (+25 Credits)</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* VIEW 2: MY LISTINGS */}
+      {viewMode === 'MY_LISTINGS' && (
+        <div className="space-y-6">
+          {/* KPI Counters */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Posted</span>
+              <div className="text-2xl font-extrabold text-slate-900 mt-1">{myCounts.total}</div>
+            </div>
+            <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 shadow-xs">
+              <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider block">Available</span>
+              <div className="text-2xl font-extrabold text-emerald-900 mt-1">{myCounts.available}</div>
+            </div>
+            <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 shadow-xs">
+              <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider block">Reserved</span>
+              <div className="text-2xl font-extrabold text-amber-900 mt-1">{myCounts.reserved}</div>
+            </div>
+            <div className="p-4 rounded-2xl bg-blue-50 border border-blue-200 shadow-xs">
+              <span className="text-[10px] font-bold text-blue-700 uppercase tracking-wider block">Completed</span>
+              <div className="text-2xl font-extrabold text-blue-900 mt-1">{myCounts.completed}</div>
+            </div>
+          </div>
+
+          {loadingMy ? (
+            <div className="py-16 text-center text-xs text-slate-400">Loading your listings...</div>
+          ) : myListings.length === 0 ? (
+            <div className="bg-white p-12 rounded-3xl border border-slate-200 text-center space-y-3">
+              <Package className="w-10 h-10 text-slate-300 mx-auto" />
+              <h3 className="text-base font-bold text-slate-800">You haven't posted any resource listings yet</h3>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                Have clean packaging boxes, glass jars, or garden mulch? List it here for neighbors and earn +25 Eco-Credits.
+              </p>
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-eco-600 text-white text-xs font-bold shadow-xs hover:bg-eco-700"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Create Your First Listing</span>
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {myListings.map((item) => (
+                <div
+                  key={item._id}
+                  className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden flex flex-col justify-between"
+                >
+                  <div className="p-5 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-eco-700 text-xs uppercase tracking-wider">
+                        {item.category.replace(/_/g, ' ')}
+                      </span>
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
                         item.status === 'AVAILABLE'
-                          ? 'bg-emerald-500 text-white'
+                          ? 'bg-emerald-100 text-emerald-800'
                           : item.status === 'RESERVED'
-                          ? 'bg-amber-500 text-white'
+                          ? 'bg-amber-100 text-amber-800'
                           : item.status === 'COMPLETED'
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-slate-400 text-white'
+                          ? 'bg-blue-100 text-blue-800'
+                          : 'bg-slate-100 text-slate-600'
                       }`}>
                         {item.status}
                       </span>
                     </div>
 
-                    {/* Quantity Pill */}
-                    <div className="absolute bottom-3 left-3 px-2.5 py-1 rounded-lg bg-slate-900/80 backdrop-blur-xs text-white text-[11px] font-bold">
-                      {item.quantity} {item.quantityUnit}
-                    </div>
+                    <h3 className="font-extrabold text-sm text-slate-900">{item.title}</h3>
+                    <p className="text-xs text-slate-600">{item.quantity} {item.quantityUnit} • {item.wardName}</p>
+
+                    {item.status === 'RESERVED' && item.claimedById && (
+                      <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 space-y-1">
+                        <div className="font-bold">Reserved by: {item.claimedById.name}</div>
+                        <div>Phone: {item.claimedById.phone || 'Not shared'}</div>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Card Content */}
-                  <div className="p-5 space-y-3">
-                    <div className="flex items-center justify-between text-[11px] text-slate-500">
-                      <span className="font-semibold text-eco-700 uppercase tracking-wider">
-                        {item.category.replace(/_/g, ' ')}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <MapPin className="w-3 h-3 text-slate-400" />
-                        {item.wardName}
-                      </span>
-                    </div>
-
-                    <h3 className="text-sm font-bold text-slate-900 leading-snug">
-                      {item.title}
-                    </h3>
-
-                    {item.description && (
-                      <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed">
-                        {item.description}
-                      </p>
+                  <div className="p-5 pt-0 space-y-2">
+                    {item.status === 'AVAILABLE' && (
+                      <button
+                        onClick={() => handleCancelListing(item._id)}
+                        className="w-full py-2 rounded-xl bg-slate-100 hover:bg-rose-50 hover:text-rose-700 text-slate-700 text-xs font-semibold transition-colors"
+                      >
+                        Cancel Listing
+                      </button>
                     )}
 
-                    {/* Owner Info */}
-                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-                      <span className="flex items-center gap-1">
-                        <User className="w-3 h-3 text-slate-400" />
-                        {item.ownerId?.name?.split(' ')[0] || 'Citizen'}
-                      </span>
-                      {isOwner && (
-                        <span className="font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
-                          Your Listing
-                        </span>
-                      )}
-                    </div>
+                    {item.status === 'RESERVED' && (
+                      <button
+                        onClick={() => handleComplete(item._id)}
+                        className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-colors"
+                      >
+                        Mark Handover Completed (+25 pts)
+                      </button>
+                    )}
+
+                    {item.status === 'COMPLETED' && (
+                      <div className="p-2 rounded-xl bg-emerald-50 text-emerald-800 text-xs text-center font-bold">
+                        +25 Eco-Credits Awarded
+                      </div>
+                    )}
                   </div>
                 </div>
-
-                {/* Card Action Footer */}
-                <div className="p-5 pt-0">
-                  {item.status === 'AVAILABLE' && (
-                    <button
-                      onClick={() => {
-                        if (!isAuthenticated) {
-                          window.location.href = '/login';
-                          return;
-                        }
-                        setActionError(null);
-                        setClaimModalListing(item);
-                      }}
-                      disabled={isOwner}
-                      className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-2xs transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                    >
-                      {isOwner ? 'Own Listing' : 'Claim Resource'}
-                    </button>
-                  )}
-
-                  {item.status === 'RESERVED' && (
-                    <div className="space-y-2">
-                      <div className="p-2 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-800 text-center font-medium">
-                        Reserved by {item.claimedById?.name || 'Citizen'}
-                      </div>
-                      {(isOwner || isClaimant || user?.role === 'ADMIN') && (
-                        <button
-                          onClick={() => handleComplete(item._id)}
-                          className="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-2xs transition-colors"
-                        >
-                          Mark Handover Completed (+25 pts)
-                        </button>
-                      )}
-                    </div>
-                  )}
-
-                  {item.status === 'COMPLETED' && (
-                    <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-[11px] text-emerald-800 flex items-center justify-center gap-1.5 font-bold">
-                      <Award className="w-3.5 h-3.5 text-amber-500" />
-                      <span>Successfully Diverted! (+25 Credits)</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+              ))}
+            </div>
+          )}
         </div>
       )}
 

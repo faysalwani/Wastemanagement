@@ -311,3 +311,30 @@ exports.cancelListing = async (req, res, next) => {
     next(err);
   }
 };
+
+// @desc    Citizen: Get own resource listings with status breakdown
+// @route   GET /api/v1/exchange/my-listings
+// @access  Private (Citizen)
+exports.getMyListings = async (req, res, next) => {
+  try {
+    const listings = await ResourceListing.find({ ownerId: req.user.id })
+      .populate('claimedById', 'name email phone')
+      .sort({ createdAt: -1 });
+
+    const counts = {
+      total: listings.length,
+      available: listings.filter((l) => l.status === 'AVAILABLE').length,
+      reserved: listings.filter((l) => l.status === 'RESERVED').length,
+      completed: listings.filter((l) => l.status === 'COMPLETED').length,
+      cancelled: listings.filter((l) => l.status === 'CANCELLED').length,
+    };
+
+    res.status(200).json({
+      success: true,
+      counts,
+      data: listings,
+    });
+  } catch (err) {
+    next(err);
+  }
+};

@@ -9,8 +9,10 @@ const {
   claimListing,
   completeListing,
   cancelListing,
+  getMyListings,
 } = require('../controllers/exchangeController');
 
+router.get('/my-listings', protect, getMyListings);
 router.post('/listings', protect, upload.single('photo'), createListing);
 router.get('/listings', getListings);
 router.get('/listings/:id', getListingById);

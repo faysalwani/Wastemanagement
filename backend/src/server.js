@@ -92,6 +92,16 @@ const reportRoutes = require('./routes/reportRoutes');
 const routeRoutes = require('./routes/routeRoutes');
 const trackingRoutes = require('./routes/trackingRoutes');
 const superAdminRoutes = require('./routes/superAdminRoutes');
+const collectionRequestRoutes = require('./routes/collectionRequestRoutes');
+const collectionRunRoutes = require('./routes/collectionRunRoutes');
+const vehicleRoutes = require('./routes/vehicleRoutes');
+const driverRoutes = require('./routes/driverRoutes');
+const scheduleRoutes = require('./routes/scheduleRoutes');
+const alertRoutes = require('./routes/alertRoutes');
+const compostRoutes = require('./routes/compostRoutes');
+const marketplaceRoutes = require('./routes/marketplaceRoutes');
+const recyclerRoutes = require('./routes/recyclerRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/ai', aiRoutes);
@@ -99,11 +109,21 @@ app.use('/api/v1/recommendations', recommendationRoutes);
 app.use('/api/v1/exchange', exchangeRoutes);
 app.use('/api/v1/credits', creditRoutes);
 app.use('/api/v1/analytics', creditRoutes);
+app.use('/api/v1/iot/alerts', alertRoutes);
 app.use('/api/v1/iot', iotRoutes);
 app.use('/api/v1/reports', reportRoutes);
 app.use('/api/v1/routes', routeRoutes);
 app.use('/api/v1/tracking', trackingRoutes);
 app.use('/api/v1/super-admin', superAdminRoutes);
+app.use('/api/v1/collection-requests', collectionRequestRoutes);
+app.use('/api/v1/collection-runs', collectionRunRoutes);
+app.use('/api/v1/vehicles', vehicleRoutes);
+app.use('/api/v1/drivers', driverRoutes);
+app.use('/api/v1/collection-schedules', scheduleRoutes);
+app.use('/api/v1/compost', compostRoutes);
+app.use('/api/v1/marketplace', marketplaceRoutes);
+app.use('/api/v1/recyclers', recyclerRoutes);
+app.use('/api/v1/notifications', notificationRoutes);
 
 // 404 Handler for undefined routes
 app.use('*', (req, res, next) => {

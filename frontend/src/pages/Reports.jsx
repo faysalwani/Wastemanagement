@@ -67,6 +67,11 @@ export default function Reports() {
   const [actionSuccess, setActionSuccess] = useState(null);
   const [actionError, setActionError] = useState(null);
 
+  // Subtab State: CITY_MAP or MY_SUBMISSIONS
+  const [subtab, setSubtab] = useState('CITY_MAP');
+  const [myReports, setMyReports] = useState([]);
+  const [loadingMy, setLoadingMy] = useState(false);
+
   // Form State
   const [formData, setFormData] = useState({
     wasteCategory: 'MIXED_MUNICIPAL',
@@ -100,9 +105,25 @@ export default function Reports() {
     }
   };
 
+  const fetchMyReports = async () => {
+    if (!isAuthenticated) return;
+    setLoadingMy(true);
+    try {
+      const res = await api.get('/reports/my');
+      if (res.data.success) {
+        setMyReports(res.data.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch citizen dumping reports:', err);
+    } finally {
+      setLoadingMy(false);
+    }
+  };
+
   useEffect(() => {
     fetchData();
-  }, []);
+    if (isAuthenticated) fetchMyReports();
+  }, [isAuthenticated]);
 
   const handleDetectGps = () => {
     if (!navigator.geolocation) {
@@ -211,177 +232,310 @@ export default function Reports() {
         </div>
       )}
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="p-5 rounded-3xl bg-white border border-slate-200 shadow-xs">
-          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Reports</span>
-          <div className="text-3xl font-extrabold text-slate-900 mt-2">{reports.length}</div>
-          <span className="text-[11px] text-slate-500">Citizen submissions</span>
-        </div>
+      {/* Subtab Toggle Navigation */}
+      <div className="flex items-center gap-2 border-b border-slate-200 pb-1">
+        <button
+          onClick={() => setSubtab('CITY_MAP')}
+          className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 ${
+            subtab === 'CITY_MAP'
+              ? 'bg-slate-900 text-white shadow-xs'
+              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+          }`}
+        >
+          <Flame className="w-4 h-4 text-rose-500" />
+          <span>City Map & Hotspots ({reports.length})</span>
+        </button>
 
-        <div className="p-5 rounded-3xl bg-rose-50 border border-rose-200 shadow-xs">
-          <span className="text-xs font-bold text-rose-800 uppercase tracking-wider">Detected Hotspots</span>
-          <div className="text-3xl font-extrabold text-rose-950 mt-2">{hotspots.length}</div>
-          <span className="text-[11px] text-rose-700">Recurring 250m spatial clusters</span>
-        </div>
-
-        <div className="p-5 rounded-3xl bg-amber-50 border border-amber-200 shadow-xs">
-          <span className="text-xs font-bold text-amber-800 uppercase tracking-wider">Pending Action</span>
-          <div className="text-3xl font-extrabold text-amber-950 mt-2">
-            {reports.filter((r) => r.status === 'SUBMITTED' || r.status === 'ASSIGNED').length}
-          </div>
-          <span className="text-[11px] text-amber-700">Scheduled for cleanup</span>
-        </div>
-
-        <div className="p-5 rounded-3xl bg-emerald-50 border border-emerald-200 shadow-xs">
-          <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider">Resolved Sites</span>
-          <div className="text-3xl font-extrabold text-emerald-950 mt-2">
-            {reports.filter((r) => r.status === 'RESOLVED').length}
-          </div>
-          <span className="text-[11px] text-emerald-700">Cleared & verified</span>
-        </div>
-      </div>
-
-      {/* Interactive GIS Map */}
-      <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-xs space-y-4">
-        <div className="flex items-center justify-between px-2">
-          <h2 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-            <Flame className="w-4 h-4 text-rose-600" />
-            <span>Srinagar Open-Dumping Complaints & 250m Hotspot Clusters</span>
-          </h2>
-          <div className="flex items-center gap-3 text-[11px] font-semibold text-slate-600">
-            <span className="flex items-center gap-1">
-              <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span> Low
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Medium
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2.5 h-2.5 rounded-full bg-red-500"></span> High/Critical
-            </span>
-            <span className="flex items-center gap-1 text-rose-700">
-              <span className="w-3 h-3 rounded-full border border-rose-500 bg-rose-500/20"></span> Hotspot Cluster
-            </span>
-          </div>
-        </div>
-
-        <div className="h-[440px] rounded-2xl overflow-hidden border border-slate-200 relative z-10">
-          <MapContainer
-            center={[34.0837, 74.7973]}
-            zoom={12}
-            scrollWheelZoom={false}
-            className="w-full h-full"
+        {isAuthenticated && (
+          <button
+            onClick={() => {
+              setSubtab('MY_SUBMISSIONS');
+              fetchMyReports();
+            }}
+            className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 ${
+              subtab === 'MY_SUBMISSIONS'
+                ? 'bg-slate-900 text-white shadow-xs'
+                : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+            }`}
           >
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
-
-            {/* Individual Complaint Markers */}
-            {reports.map((rep) => {
-              const coords = [rep.location.coordinates[1], rep.location.coordinates[0]];
-              return (
-                <Marker key={rep._id} position={coords} icon={createReportIcon(rep.severity)}>
-                  <Popup>
-                    <div className="p-1 space-y-1.5 text-xs">
-                      <div className="font-bold text-slate-900">{rep.wardName}</div>
-                      <div className="text-[11px] text-slate-500">{rep.address}</div>
-                      <div className="pt-1 border-t border-slate-200 space-y-0.5">
-                        <div className="flex justify-between gap-4 font-semibold">
-                          <span>Category:</span>
-                          <span className="text-slate-700">{rep.wasteCategory.replace(/_/g, ' ')}</span>
-                        </div>
-                        <div className="flex justify-between gap-4 font-semibold">
-                          <span>Severity:</span>
-                          <span className="text-rose-600">{rep.severity}</span>
-                        </div>
-                        <div className="flex justify-between gap-4">
-                          <span>Status:</span>
-                          <span className="font-bold uppercase text-slate-800">{rep.status}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </Popup>
-                </Marker>
-              );
-            })}
-
-            {/* Spatial Hotspot Circles (250m radius) */}
-            {hotspots.map((hs) => (
-              <Circle
-                key={hs.hotspotId}
-                center={[hs.centroid[1], hs.centroid[0]]}
-                radius={hs.radiusMeters}
-                pathOptions={{
-                  color: '#dc2626',
-                  fillColor: '#ef4444',
-                  fillOpacity: 0.2,
-                  weight: 2,
-                  dashArray: '4, 4',
-                }}
-              >
-                <Popup>
-                  <div className="p-1 space-y-1 text-xs">
-                    <div className="font-bold text-rose-800">
-                      🚨 Hotspot Cluster ({hs.incidentCount} incidents)
-                    </div>
-                    <div className="text-[11px] text-slate-600">
-                      Ward: {hs.wardName} • Severity: {hs.highestSeverity}
-                    </div>
-                  </div>
-                </Popup>
-              </Circle>
-            ))}
-          </MapContainer>
-        </div>
-      </div>
-
-      {/* Reports List */}
-      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4">
-        <h3 className="text-base font-bold text-slate-900">Recent Community Complaints</h3>
-
-        {reports.length === 0 ? (
-          <div className="py-8 text-center text-xs text-slate-500">
-            No open-dumping reports registered yet.
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {reports.map((r) => (
-              <div
-                key={r._id}
-                className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 transition-colors space-y-3 flex flex-col justify-between"
-              >
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-slate-700 flex items-center gap-1">
-                      <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                      {r.wardName}
-                    </span>
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
-                      r.status === 'RESOLVED'
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : r.status === 'VERIFIED'
-                        ? 'bg-blue-100 text-blue-800'
-                        : 'bg-amber-100 text-amber-800'
-                    }`}>
-                      {r.status}
-                    </span>
-                  </div>
-
-                  <p className="text-xs text-slate-600 line-clamp-2">{r.description}</p>
-                </div>
-
-                <div className="pt-2 border-t border-slate-200/80 flex items-center justify-between text-[11px] text-slate-500">
-                  <span className="font-semibold text-rose-700 uppercase">
-                    {r.severity} Priority
-                  </span>
-                  <span>{new Date(r.createdAt).toLocaleDateString()}</span>
-                </div>
-              </div>
-            ))}
-          </div>
+            <CheckCircle className="w-4 h-4 text-emerald-500" />
+            <span>My Submissions ({myReports.length})</span>
+          </button>
         )}
       </div>
+
+      {/* VIEW 1: CITY MAP & HOTSPOTS */}
+      {subtab === 'CITY_MAP' && (
+        <div className="space-y-8">
+          {/* KPI Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="p-5 rounded-3xl bg-white border border-slate-200 shadow-xs">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Reports</span>
+              <div className="text-3xl font-extrabold text-slate-900 mt-2">{reports.length}</div>
+              <span className="text-[11px] text-slate-500">Citizen submissions</span>
+            </div>
+
+            <div className="p-5 rounded-3xl bg-rose-50 border border-rose-200 shadow-xs">
+              <span className="text-xs font-bold text-rose-800 uppercase tracking-wider">Detected Hotspots</span>
+              <div className="text-3xl font-extrabold text-rose-950 mt-2">{hotspots.length}</div>
+              <span className="text-[11px] text-rose-700">Recurring 250m spatial clusters</span>
+            </div>
+
+            <div className="p-5 rounded-3xl bg-amber-50 border border-amber-200 shadow-xs">
+              <span className="text-xs font-bold text-amber-800 uppercase tracking-wider">Pending Action</span>
+              <div className="text-3xl font-extrabold text-amber-950 mt-2">
+                {reports.filter((r) => r.status === 'SUBMITTED' || r.status === 'ASSIGNED').length}
+              </div>
+              <span className="text-[11px] text-amber-700">Scheduled for cleanup</span>
+            </div>
+
+            <div className="p-5 rounded-3xl bg-emerald-50 border border-emerald-200 shadow-xs">
+              <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider">Resolved Sites</span>
+              <div className="text-3xl font-extrabold text-emerald-950 mt-2">
+                {reports.filter((r) => r.status === 'RESOLVED').length}
+              </div>
+              <span className="text-[11px] text-emerald-700">Cleared & verified</span>
+            </div>
+          </div>
+
+          {/* Interactive GIS Map */}
+          <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-xs space-y-4">
+            <div className="flex items-center justify-between px-2">
+              <h2 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                <Flame className="w-4 h-4 text-rose-600" />
+                <span>Srinagar Open-Dumping Complaints & 250m Hotspot Clusters</span>
+              </h2>
+              <div className="flex items-center gap-3 text-[11px] font-semibold text-slate-600">
+                <span className="flex items-center gap-1">
+                  <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span> Low
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Medium
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2.5 h-2.5 rounded-full bg-red-500"></span> High/Critical
+                </span>
+                <span className="flex items-center gap-1 text-rose-700">
+                  <span className="w-3 h-3 rounded-full border border-rose-500 bg-rose-500/20"></span> Hotspot Cluster
+                </span>
+              </div>
+            </div>
+
+            <div className="h-[440px] rounded-2xl overflow-hidden border border-slate-200 relative z-10">
+              <MapContainer
+                center={[34.0837, 74.7973]}
+                zoom={12}
+                scrollWheelZoom={false}
+                className="w-full h-full"
+              >
+                <TileLayer
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
+
+                {/* Individual Complaint Markers */}
+                {reports.map((rep) => {
+                  const coords = [rep.location.coordinates[1], rep.location.coordinates[0]];
+                  return (
+                    <Marker key={rep._id} position={coords} icon={createReportIcon(rep.severity)}>
+                      <Popup>
+                        <div className="p-1 space-y-1.5 text-xs">
+                          <div className="font-bold text-slate-900">{rep.wardName}</div>
+                          <div className="text-[11px] text-slate-500">{rep.address}</div>
+                          <div className="pt-1 border-t border-slate-200 space-y-0.5">
+                            <div className="flex justify-between gap-4 font-semibold">
+                              <span>Category:</span>
+                              <span className="text-slate-700">{rep.wasteCategory.replace(/_/g, ' ')}</span>
+                            </div>
+                            <div className="flex justify-between gap-4 font-semibold">
+                              <span>Severity:</span>
+                              <span className="text-rose-600">{rep.severity}</span>
+                            </div>
+                            <div className="flex justify-between gap-4">
+                              <span>Status:</span>
+                              <span className="font-bold uppercase text-slate-800">{rep.status}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </Popup>
+                    </Marker>
+                  );
+                })}
+
+                {/* 250m Hotspot Cluster Circles */}
+                {hotspots.map((hot, idx) => (
+                  <Circle
+                    key={idx}
+                    center={[hot.centerCoordinates[1], hot.centerCoordinates[0]]}
+                    radius={250}
+                    pathOptions={{
+                      color: '#e11d48',
+                      fillColor: '#fb7185',
+                      fillOpacity: 0.25,
+                      weight: 2,
+                      dashArray: '4, 4',
+                    }}
+                  >
+                    <Popup>
+                      <div className="p-1 space-y-1 text-xs">
+                        <div className="font-bold text-rose-900">
+                          Hotspot Cluster #{idx + 1}
+                        </div>
+                        <div className="text-slate-600">
+                          {hot.reportCount} spatial complaints within 250m radius
+                        </div>
+                      </div>
+                    </Popup>
+                  </Circle>
+                ))}
+              </MapContainer>
+            </div>
+          </div>
+
+          {/* Recent Reports Feed */}
+          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4">
+            <h3 className="text-base font-bold text-slate-900">Recent Citizen Dumping Complaints</h3>
+
+            {loading ? (
+              <div className="py-12 text-center text-xs text-slate-400">Loading complaint feed...</div>
+            ) : reports.length === 0 ? (
+              <div className="py-8 text-center text-xs text-slate-500">
+                No illicit dumping reports recorded.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {reports.slice(0, 6).map((r) => (
+                  <div
+                    key={r._id}
+                    className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 transition-colors space-y-3 flex flex-col justify-between"
+                  >
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-slate-700 flex items-center gap-1">
+                          <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                          {r.wardName}
+                        </span>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
+                          r.status === 'RESOLVED'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : r.status === 'VERIFIED'
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'bg-amber-100 text-amber-800'
+                        }`}>
+                          {r.status}
+                        </span>
+                      </div>
+
+                      <p className="text-xs text-slate-600 line-clamp-2">{r.description}</p>
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-200/80 flex items-center justify-between text-[11px] text-slate-500">
+                      <span className="font-semibold text-rose-700 uppercase">
+                        {r.severity} Priority
+                      </span>
+                      <span>{new Date(r.createdAt).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* VIEW 2: MY SUBMISSIONS */}
+      {subtab === 'MY_SUBMISSIONS' && (
+        <div className="space-y-6">
+          <div className="p-5 rounded-3xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">
+            <div>
+              <h3 className="font-extrabold text-base text-slate-900">Your Submitted Complaints</h3>
+              <p className="text-xs text-slate-500">Municipal verification awards +50 Eco-Credits to your profile.</p>
+            </div>
+            <div className="text-right">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Submitted</span>
+              <div className="text-2xl font-extrabold text-slate-900">{myReports.length}</div>
+            </div>
+          </div>
+
+          {loadingMy ? (
+            <div className="py-16 text-center text-xs text-slate-400">Loading your submissions...</div>
+          ) : myReports.length === 0 ? (
+            <div className="p-12 rounded-3xl bg-white border border-slate-200 shadow-xs text-center space-y-3">
+              <AlertOctagon className="w-10 h-10 text-slate-300 mx-auto" />
+              <h3 className="text-base font-bold text-slate-800">You haven't submitted any dumping reports yet</h3>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                Help keep Srinagar clean. Report illegal dumpsites with photos and GPS coordinates to earn +50 Eco-Credits upon municipal verification.
+              </p>
+              <button
+                onClick={() => setShowModal(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-rose-600 text-white text-xs font-bold shadow-xs hover:bg-rose-700"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Submit a Complaint</span>
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {myReports.map((item) => (
+                <div
+                  key={item._id}
+                  className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden flex flex-col justify-between"
+                >
+                  <div className="p-5 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-700 flex items-center gap-1">
+                        <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                        {item.wardName}
+                      </span>
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
+                        item.status === 'RESOLVED'
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : item.status === 'VERIFIED'
+                          ? 'bg-blue-100 text-blue-800'
+                          : item.status === 'REJECTED'
+                          ? 'bg-rose-100 text-rose-800'
+                          : 'bg-amber-100 text-amber-800'
+                      }`}>
+                        {item.status}
+                      </span>
+                    </div>
+
+                    <div className="text-xs text-slate-500 font-medium">
+                      {item.address}
+                    </div>
+
+                    <p className="text-xs text-slate-800 font-semibold leading-relaxed">
+                      {item.description}
+                    </p>
+
+                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+                      <span className="font-bold text-rose-600">{item.severity} Severity</span>
+                      <span>{new Date(item.createdAt).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+
+                  <div className="p-5 pt-0">
+                    {(item.status === 'VERIFIED' || item.status === 'RESOLVED') ? (
+                      <div className="p-2 rounded-xl bg-emerald-50 text-emerald-800 text-xs text-center font-bold flex items-center justify-center gap-1">
+                        <Award className="w-3.5 h-3.5 text-amber-500" />
+                        <span>Verified! +50 Eco-Credits Awarded</span>
+                      </div>
+                    ) : item.status === 'REJECTED' ? (
+                      <div className="p-2 rounded-xl bg-rose-50 text-rose-700 text-xs text-center font-semibold">
+                        Report not verified
+                      </div>
+                    ) : (
+                      <div className="p-2 rounded-xl bg-amber-50 text-amber-800 text-xs text-center font-medium">
+                        Pending municipal inspection
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Report Modal */}
       {showModal && (

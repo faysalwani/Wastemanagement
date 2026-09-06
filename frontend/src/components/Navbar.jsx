@@ -22,10 +22,12 @@ import {
   Home as HomeIcon,
   Layers,
   Sparkles,
-  ChevronRight
+  ChevronRight,
+  ShoppingBag
 } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import { useAuth } from '../context/AuthContext';
+import NotificationCenter from './NotificationCenter';
 
 export default function Navbar() {
   const location = useLocation();
@@ -47,15 +49,19 @@ export default function Navbar() {
     // Restored Public Navigation for visitors and prospective citizens
     navItems = [
       { path: '/', label: 'Home', icon: HomeIcon },
+      { path: '/marketplace', label: 'Rewards Shop', icon: ShoppingBag },
+      { path: '/recyclers', label: 'Recyclers', icon: Recycle },
       { path: '/scan', label: 'AI Scanner', icon: Camera },
       { path: '/compost', label: 'Composting', icon: Sprout },
-      { path: '/exchange', label: 'Resource Exchange', icon: Repeat },
+      { path: '/exchange', label: 'Exchange', icon: Repeat },
       { path: '/smart-bins', label: 'Smart Bins', icon: Cpu },
     ];
   } else if (userRole === 'CITIZEN') {
     navItems = [
       { path: '/', label: 'Home', icon: HomeIcon },
       { path: '/citizen', label: 'Dashboard', icon: Activity },
+      { path: '/marketplace', label: 'Rewards Shop', icon: ShoppingBag },
+      { path: '/recyclers', label: 'Recyclers', icon: Recycle },
       { path: '/scan', label: 'AI Scanner', icon: Camera },
       { path: '/compost', label: 'Composting', icon: Sprout },
       { path: '/exchange', label: 'Exchange', icon: Repeat },
@@ -160,7 +166,8 @@ export default function Navbar() {
                 {/* Eco Credits Pill (Citizen only) */}
                 {userRole === 'CITIZEN' && (
                   <Link 
-                    to="/profile" 
+                    to="/wallet" 
+                    title="Open Eco-Credits Wallet"
                     className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100/70 border border-emerald-200 text-xs font-bold text-emerald-900 transition-colors"
                   >
                     <Award className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
@@ -168,6 +175,9 @@ export default function Navbar() {
                     <span className="text-[10px] font-medium text-emerald-700 hidden sm:inline">pts</span>
                   </Link>
                 )}
+
+                {/* Real-time Notification Center */}
+                <NotificationCenter />
 
                 {/* Role Badge */}
                 <span className={`hidden md:inline-block px-2.5 py-1 rounded-lg text-[10px] font-extrabold uppercase tracking-wider ${
@@ -298,15 +308,27 @@ export default function Navbar() {
               })}
             </div>
 
-            {/* Logout on mobile */}
+            {/* Quick links & Logout on mobile */}
             {isAuthenticated && (
-              <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 px-1">
-                <Link to="/profile" className="font-semibold text-slate-700 hover:text-emerald-700">
-                  View Profile & Settings
-                </Link>
-                <button onClick={logout} className="text-rose-600 font-semibold hover:underline">
-                  Sign Out
-                </button>
+              <div className="pt-2 border-t border-slate-100 space-y-2 text-xs text-slate-600 px-1">
+                {userRole === 'CITIZEN' && (
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-100 text-xs font-semibold">
+                    <Link to="/wallet" className="text-emerald-700 hover:underline">
+                      Eco-Credits Wallet
+                    </Link>
+                    <Link to="/orders" className="text-slate-600 hover:underline">
+                      My Orders & Redemptions
+                    </Link>
+                  </div>
+                )}
+                <div className="flex items-center justify-between">
+                  <Link to="/profile" className="font-semibold text-slate-700 hover:text-emerald-700">
+                    View Profile & Settings
+                  </Link>
+                  <button onClick={logout} className="text-rose-600 font-semibold hover:underline">
+                    Sign Out
+                  </button>
+                </div>
               </div>
             )}
           </div>

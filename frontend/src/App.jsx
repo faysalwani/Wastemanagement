@@ -19,6 +19,10 @@ import DriverDashboard from './pages/DriverDashboard';
 import AdminHub from './pages/AdminHub';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import ForgotPassword from './pages/ForgotPassword';
+import Wallet from './pages/Wallet';
+import Marketplace from './pages/Marketplace';
+import Orders from './pages/Orders';
+import Recyclers from './pages/Recyclers';
 
 export default function App() {
   return (
@@ -76,8 +80,26 @@ export default function App() {
                 <Route path="/collection" element={<Collection />} />
                 <Route path="/reports" element={<Reports />} />
                 <Route path="/smart-bins" element={<SmartBins />} />
+                <Route path="/marketplace" element={<Marketplace />} />
+                <Route path="/recyclers" element={<Recyclers />} />
 
-                {/* Authenticated Citizen / User Profile */}
+                {/* Authenticated Citizen / User Profile, Wallet & Orders */}
+                <Route
+                  path="/wallet"
+                  element={
+                    <ProtectedRoute>
+                      <Wallet />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/orders"
+                  element={
+                    <ProtectedRoute>
+                      <Orders />
+                    </ProtectedRoute>
+                  }
+                />
                 <Route
                   path="/profile"
                   element={

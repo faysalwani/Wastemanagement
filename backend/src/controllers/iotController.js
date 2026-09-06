@@ -7,22 +7,23 @@ const { getIO } = require('../sockets/socketHandler');
 exports.ingestTelemetry = async (req, res, next) => {
   try {
     const rawToken = req.headers['x-device-token'];
-    const { binId, rawDistanceCm, weightKg, temperatureC, batteryPercent } = req.body;
+    const effectiveBinId = req.body.binId || req.body.id;
+    const { rawDistanceCm, fill, weightKg, weight, temperatureC, temp, batteryPercent } = req.body;
 
-    if (!binId || rawDistanceCm === undefined) {
+    if (!effectiveBinId || (rawDistanceCm === undefined && fill === undefined)) {
       return res.status(400).json({
         success: false,
-        error: { code: 400, message: 'Please provide binId and rawDistanceCm.' },
+        error: { code: 400, message: 'Please provide binId (or id) and rawDistanceCm (or fill).' },
       });
     }
 
     // Find bin
-    const bin = await SmartBin.findOne({ binId: binId.toUpperCase() }).select('+deviceToken +deviceTokenHash');
+    const bin = await SmartBin.findOne({ binId: effectiveBinId.toUpperCase() }).select('+deviceToken +deviceTokenHash');
 
     if (!bin) {
       return res.status(404).json({
         success: false,
-        error: { code: 404, message: `Smart bin ${binId} not registered in system.` },
+        error: { code: 404, message: `Smart bin ${effectiveBinId} not registered in system.` },
       });
     }
 
@@ -37,13 +38,21 @@ exports.ingestTelemetry = async (req, res, next) => {
       }
     }
 
-    // Calculate fill percentage based on physical bin depth
-    const fillPercent = bin.calculateFillFromDistance(parseFloat(rawDistanceCm));
+    // Calculate or assign fill percentage
+    let fillPercent;
+    if (fill !== undefined) {
+      fillPercent = Math.min(100, Math.max(0, parseFloat(fill)));
+    } else {
+      fillPercent = bin.calculateFillFromDistance(parseFloat(rawDistanceCm));
+    }
+
+    const effectiveWeight = weightKg !== undefined ? weightKg : weight;
+    const effectiveTemp = temperatureC !== undefined ? temperatureC : temp;
 
     // Update bin state
     bin.currentFillPercent = fillPercent;
-    if (weightKg !== undefined) bin.currentWeightKg = Math.max(0, parseFloat(weightKg));
-    if (temperatureC !== undefined) bin.currentTemperatureC = parseFloat(temperatureC);
+    if (effectiveWeight !== undefined) bin.currentWeightKg = Math.max(0, parseFloat(effectiveWeight));
+    if (effectiveTemp !== undefined) bin.currentTemperatureC = parseFloat(effectiveTemp);
     if (batteryPercent !== undefined) bin.batteryPercent = Math.min(100, Math.max(0, parseFloat(batteryPercent)));
 
     bin.lastSeen = new Date();
@@ -201,6 +210,70 @@ exports.createBin = async (req, res, next) => {
       message: 'Smart Bin provisioned successfully.',
       deviceToken: rawToken, // Displayed once to admin for flashing onto ESP32
       data: bin,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc    Admin: Update smart bin configuration, location, or thresholds
+// @route   PATCH /api/v1/iot/bins/:id
+// @access  Private (Admin, Super Admin)
+exports.updateBin = async (req, res, next) => {
+  try {
+    const bin = await SmartBin.findById(req.params.id);
+    if (!bin) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 404, message: 'Smart Bin not found.' },
+      });
+    }
+
+    const { name, wardName, address, coordinates, depthCm, capacityLiters, isActive, fillThresholds } = req.body;
+
+    if (name) bin.name = name.trim();
+    if (wardName) bin.wardName = wardName.trim();
+    if (address) bin.address = address.trim();
+    if (coordinates && Array.isArray(coordinates)) bin.location.coordinates = coordinates;
+    if (depthCm !== undefined) bin.depthCm = parseFloat(depthCm);
+    if (capacityLiters !== undefined) bin.capacityLiters = parseFloat(capacityLiters);
+    if (isActive !== undefined) bin.isActive = isActive;
+    if (fillThresholds) {
+      if (fillThresholds.warning !== undefined) bin.fillThresholds.warning = parseFloat(fillThresholds.warning);
+      if (fillThresholds.critical !== undefined) bin.fillThresholds.critical = parseFloat(fillThresholds.critical);
+    }
+
+    await bin.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Smart bin updated successfully.',
+      data: bin,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc    Admin: Deactivate or delete smart bin
+// @route   DELETE /api/v1/iot/bins/:id
+// @access  Private (Admin, Super Admin)
+exports.deleteBin = async (req, res, next) => {
+  try {
+    const bin = await SmartBin.findById(req.params.id);
+    if (!bin) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 404, message: 'Smart Bin not found.' },
+      });
+    }
+
+    bin.isActive = false;
+    await bin.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Smart Bin deactivated.',
     });
   } catch (err) {
     next(err);

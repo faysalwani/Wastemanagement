@@ -31,6 +31,17 @@ const VehicleSchema = new mongoose.Schema(
       ref: 'User',
       index: true,
     },
+    vehicleType: {
+      type: String,
+      enum: ['MINI_COMPACTOR', 'TIPPER_TRUCK', 'ELECTRIC_LOADER', 'HEAVY_COMPACTOR'],
+      default: 'MINI_COMPACTOR',
+    },
+    status: {
+      type: String,
+      enum: ['AVAILABLE', 'ON_ROUTE', 'COLLECTING', 'MAINTENANCE', 'OFFLINE'],
+      default: 'AVAILABLE',
+      index: true,
+    },
     isActive: {
       type: Boolean,
       default: true,

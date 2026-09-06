@@ -17,6 +17,15 @@ const NotificationSchema = new mongoose.Schema(
         'REPORT_RESOLVED',
         'CREDIT_AWARD',
         'SYSTEM_BROADCAST',
+        'COLLECTION_REMINDER',
+        'VEHICLE_NEARBY',
+        'REPORT_STATUS_CHANGED',
+        'COLLECTION_REQUEST_UPDATED',
+        'EVENT_REQUEST_UPDATED',
+        'MARKETPLACE_ORDER_UPDATED',
+        'ECO_CREDIT_EARNED',
+        'ECO_CREDIT_REDEEMED',
+        'SYSTEM_NOTIFICATION',
       ],
       required: true,
     },
@@ -30,6 +39,10 @@ const NotificationSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    link: {
+      type: String,
+      trim: true,
+    },
     data: {
       type: mongoose.Schema.Types.Mixed,
       default: {},
@@ -37,6 +50,9 @@ const NotificationSchema = new mongoose.Schema(
     isRead: {
       type: Boolean,
       default: false,
+    },
+    readAt: {
+      type: Date,
     },
     createdAt: {
       type: Date,

@@ -16,6 +16,9 @@ const EcoCreditTransactionSchema = new mongoose.Schema(
         'VERIFIED_DUMPING_REPORT',
         'RECYCLING_DROP_OFF',
         'ADMIN_ADJUSTMENT',
+        'COMPOSTING_ACTIVITY',
+        'MARKETPLACE_REDEMPTION',
+        'REDEMPTION_REFUND',
       ],
       required: true,
     },
@@ -23,9 +26,24 @@ const EcoCreditTransactionSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    amount: {
+      type: Number,
+      default: function () {
+        return this.creditsEarned;
+      },
+    },
+    referenceType: {
+      type: String,
+      enum: ['COMPOST', 'REPORT', 'EXCHANGE', 'ORDER', 'ADMIN', 'OTHER'],
+      default: 'OTHER',
+    },
     referenceId: {
       type: String,
       description: 'Foreign key to report, exchange, or bin reading',
+    },
+    metadata: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
     },
     idempotencyKey: {
       type: String,

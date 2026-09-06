@@ -15,117 +15,100 @@ import {
   Users,
   Activity,
   Layers,
-  ArrowRight
+  ArrowRight,
+  Send,
+  Calendar,
+  FileText,
+  Radio,
+  AlertTriangle,
+  ShoppingBag,
+  Award
 } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useSocket } from '../context/SocketContext';
+
+// Modular Admin Feature Tabs
+import CollectionRequestsTab from '../components/admin/CollectionRequestsTab';
+import VehiclesDriversTab from '../components/admin/VehiclesDriversTab';
+import SmartBinsHealthTab from '../components/admin/SmartBinsHealthTab';
+import RouteDispatchTab from '../components/admin/RouteDispatchTab';
+import SmartBinAlertsTab from '../components/admin/SmartBinAlertsTab';
+import WasteAnalyticsTab from '../components/admin/WasteAnalyticsTab';
+import ReportsExportTab from '../components/admin/ReportsExportTab';
+import MarketplaceAdminTab from '../components/admin/MarketplaceAdminTab';
+import RecyclersAdminTab from '../components/admin/RecyclersAdminTab';
+import RewardConfigTab from '../components/admin/RewardConfigTab';
 
 export default function AdminHub() {
   const { user } = useAuth() || {};
+  const { socket, isConnected } = useSocket() || {};
 
-  const [activeTab, setActiveTab] = useState('OVERVIEW'); // OVERVIEW, BINS, REPORTS, ROUTES, RECYCLERS
+  const [activeTab, setActiveTab] = useState('OVERVIEW');
   const [bins, setBins] = useState([]);
+  const [requests, setRequests] = useState([]);
   const [reports, setReports] = useState([]);
-  const [routeData, setRouteData] = useState(null);
-  const [recyclers, setRecyclers] = useState([]);
+  const [vehicles, setVehicles] = useState([]);
+  const [activeRuns, setActiveRuns] = useState([]);
   const [diversion, setDiversion] = useState(null);
+  const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [actionMsg, setActionMsg] = useState(null);
 
-  // New Bin Modal State
-  const [showBinModal, setShowBinModal] = useState(false);
-  const [newBinData, setNewBinData] = useState({
-    binId: '',
-    name: '',
-    wardName: 'Lal Chowk',
-    address: '',
-    lng: '74.8080',
-    lat: '34.0725',
-    depthCm: 100,
-    capacityLiters: 240,
-  });
-  const [generatedToken, setGeneratedToken] = useState(null);
-
-  const fetchAdminData = async () => {
+  const fetchOverviewTelemetry = async () => {
     setLoading(true);
     try {
-      const [binsRes, reportsRes, routeRes, recRes, divRes] = await Promise.all([
+      const [binsRes, reqsRes, repsRes, vehsRes, runsRes, divRes, alrtRes] = await Promise.all([
         api.get('/iot/bins'),
+        api.get('/collection-requests'),
         api.get('/reports'),
-        api.get('/routes/optimize'),
-        api.get('/recommendations/recyclers'),
+        api.get('/vehicles'),
+        api.get('/collection-runs/active'),
         api.get('/analytics/diversion'),
+        api.get('/iot/alerts?status=ACTIVE'),
       ]);
 
       if (binsRes.data.success) setBins(binsRes.data.data);
-      if (reportsRes.data.success) setReports(reportsRes.data.data);
-      if (routeRes.data.success) setRouteData(routeRes.data);
-      if (recRes.data.success) setRecyclers(recRes.data.data);
+      if (reqsRes.data.success) setRequests(reqsRes.data.data);
+      if (repsRes.data.success) setReports(repsRes.data.data);
+      if (vehsRes.data.success) setVehicles(vehsRes.data.data);
+      if (runsRes.data.success) setActiveRuns(runsRes.data.data);
       if (divRes.data.success) setDiversion(divRes.data.data);
+      if (alrtRes.data.success) setAlerts(alrtRes.data.data);
     } catch (err) {
-      console.error('Failed to fetch admin telemetry:', err);
+      console.error('Failed to fetch admin overview telemetry:', err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchAdminData();
+    fetchOverviewTelemetry();
   }, []);
 
-  const handleVerifyReport = async (reportId) => {
-    try {
-      const res = await api.patch(`/reports/${reportId}/verify`, { status: 'VERIFIED' });
-      if (res.data.success) {
-        setActionMsg(`Report verified! +50 Eco-Credits awarded to citizen.`);
-        fetchAdminData();
-        setTimeout(() => setActionMsg(null), 4000);
-      }
-    } catch (err) {
-      alert('Error verifying report');
-    }
-  };
+  // Listen to WebSocket events to update overview counters live
+  useEffect(() => {
+    if (!socket) return;
 
-  const handleResolveReport = async (reportId) => {
-    try {
-      const res = await api.patch(`/reports/${reportId}/verify`, { status: 'RESOLVED' });
-      if (res.data.success) {
-        setActionMsg(`Report marked as RESOLVED and cleared.`);
-        fetchAdminData();
-        setTimeout(() => setActionMsg(null), 4000);
-      }
-    } catch (err) {
-      alert('Error resolving report');
-    }
-  };
+    socket.on('smartbin_telemetry_updated', () => fetchOverviewTelemetry());
+    socket.on('new_dumping_report', () => fetchOverviewTelemetry());
+    socket.on('new_collection_request', () => fetchOverviewTelemetry());
+    socket.on('collection_run_completed', () => fetchOverviewTelemetry());
 
-  const handleCreateBin = async (e) => {
-    e.preventDefault();
-    try {
-      const res = await api.post('/iot/bins', {
-        binId: newBinData.binId,
-        name: newBinData.name,
-        wardName: newBinData.wardName,
-        address: newBinData.address,
-        coordinates: [parseFloat(newBinData.lng), parseFloat(newBinData.lat)],
-        depthCm: parseInt(newBinData.depthCm, 10),
-        capacityLiters: parseInt(newBinData.capacityLiters, 10),
-      });
+    return () => {
+      socket.off('smartbin_telemetry_updated');
+      socket.off('new_dumping_report');
+      socket.off('new_collection_request');
+      socket.off('collection_run_completed');
+    };
+  }, [socket]);
 
-      if (res.data.success) {
-        setGeneratedToken(res.data.deviceToken);
-        fetchAdminData();
-      }
-    } catch (err) {
-      alert(err.response?.data?.error?.message || 'Failed to create smart bin.');
-    }
-  };
-
-  const urgentBinsCount = bins.filter((b) => b.status === 'URGENT').length;
-  const pendingReportsCount = reports.filter((r) => r.status === 'SUBMITTED').length;
+  const urgentBins = bins.filter((b) => b.currentFillPercent >= 80);
+  const pendingRequests = requests.filter((r) => r.status === 'REQUESTED');
+  const openReports = reports.filter((r) => r.status === 'SUBMITTED');
+  const activeVehiclesCount = vehicles.filter((v) => v.status === 'COLLECTING' || v.status === 'ON_ROUTE').length;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-10 space-y-8">
+    <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
       {/* Header Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 sm:p-8 bg-slate-900 rounded-3xl text-white shadow-xl">
         <div>
@@ -134,7 +117,7 @@ export default function AdminHub() {
             Srinagar Municipal Corporation (SMC) Portal
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-            Executive Admin BI & Operations Hub
+            Municipal Operations Hub
           </h1>
           <p className="text-xs sm:text-sm text-slate-300 mt-1">
             Real-time municipal telemetry, smart-bin health, citizen grievance resolution, and VRP route dispatching.
@@ -147,21 +130,20 @@ export default function AdminHub() {
         </div>
       </div>
 
-      {actionMsg && (
-        <div className="flex items-center gap-2 p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 font-semibold">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-          <span>{actionMsg}</span>
-        </div>
-      )}
-
       {/* Navigation Tabs */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-slate-200">
         {[
-          { id: 'OVERVIEW', label: 'City KPI Overview', icon: Activity },
+          { id: 'OVERVIEW', label: 'City Overview', icon: Activity },
+          { id: 'REQUESTS', label: `Collection Requests (${pendingRequests.length})`, icon: Calendar },
+          { id: 'DISPATCH', label: 'Route Dispatch (VRP)', icon: Truck },
           { id: 'BINS', label: `Smart Bins (${bins.length})`, icon: Trash2 },
-          { id: 'REPORTS', label: `Dumping Reports (${reports.length})`, icon: AlertOctagon },
-          { id: 'ROUTES', label: 'Route Dispatch (VRP)', icon: Truck },
-          { id: 'RECYCLERS', label: `Recyclers (${recyclers.length})`, icon: Recycle },
+          { id: 'ALERTS', label: `Alerts (${alerts.length})`, icon: AlertTriangle },
+          { id: 'FLEET', label: `Vehicles & Drivers (${vehicles.length})`, icon: Users },
+          { id: 'ANALYTICS', label: 'Waste Diversion', icon: TrendingUp },
+          { id: 'MARKETPLACE', label: 'Rewards & Orders', icon: ShoppingBag },
+          { id: 'RECYCLERS', label: 'Recyclers Directory', icon: Recycle },
+          { id: 'REWARDS_CONFIG', label: 'Eco-Credits Config', icon: Award },
+          { id: 'EXPORTS', label: 'Reports Export', icon: FileText },
         ].map((tab) => {
           const Icon = tab.icon;
           return (
@@ -181,72 +163,80 @@ export default function AdminHub() {
         })}
       </div>
 
-      {/* TAB 1: OVERVIEW */}
+      {/* TAB 1: EXECUTIVE OVERVIEW */}
       {activeTab === 'OVERVIEW' && (
         <div className="space-y-8">
-          {/* KPI Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div className="p-5 rounded-3xl bg-white border border-slate-200 shadow-xs">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Active Smart Bins</span>
-              <div className="text-3xl font-extrabold text-slate-900 mt-2">{bins.length}</div>
-              <span className="text-[11px] text-rose-600 font-semibold">{urgentBinsCount} require urgent pickup</span>
+          {/* KPI Cards (Real Data Only) */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Deployed Bins</span>
+              <div className="text-2xl font-extrabold text-slate-900 mt-1">{bins.length}</div>
+              <span className="text-[10px] text-rose-600 font-semibold">{urgentBins.length} ≥ 80% Full</span>
             </div>
 
-            <div className="p-5 rounded-3xl bg-white border border-slate-200 shadow-xs">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Waste Diversion Rate</span>
-              <div className="text-3xl font-extrabold text-emerald-700 mt-2">
-                {diversion?.diversionRatePercent ?? 72.4}%
+            <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Pending Requests</span>
+              <div className="text-2xl font-extrabold text-amber-600 mt-1">{pendingRequests.length}</div>
+              <span className="text-[10px] text-slate-500">Pickups requested</span>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Active Fleet</span>
+              <div className="text-2xl font-extrabold text-sky-700 mt-1">{activeVehiclesCount} / {vehicles.length}</div>
+              <span className="text-[10px] text-slate-500">Vehicles on route</span>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Diversion Rate</span>
+              <div className="text-2xl font-extrabold text-emerald-700 mt-1">
+                {diversion ? `${diversion.diversionRatePercent}%` : '0%'}
               </div>
-              <span className="text-[11px] text-emerald-800 font-medium">Reused • Composted • Recycled</span>
+              <span className="text-[10px] text-emerald-800 font-medium">Reused/Recycled</span>
             </div>
 
-            <div className="p-5 rounded-3xl bg-white border border-slate-200 shadow-xs">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Pending Grievances</span>
-              <div className="text-3xl font-extrabold text-amber-700 mt-2">{pendingReportsCount}</div>
-              <span className="text-[11px] text-slate-500">Open dumping complaints</span>
+            <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Active Alerts</span>
+              <div className="text-2xl font-extrabold text-rose-700 mt-1">{alerts.length}</div>
+              <span className="text-[10px] text-rose-600">Hardware & Threshold</span>
             </div>
 
-            <div className="p-5 rounded-3xl bg-white border border-slate-200 shadow-xs">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Fuel Optimization</span>
-              <div className="text-3xl font-extrabold text-sky-700 mt-2">
-                {routeData?.summary?.fuelSavedLiters ?? 18.5} L
-              </div>
-              <span className="text-[11px] text-slate-500">-28.4% distance reduced</span>
+            <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Dumping Grievances</span>
+              <div className="text-2xl font-extrabold text-slate-900 mt-1">{openReports.length}</div>
+              <span className="text-[10px] text-slate-500">Unresolved reports</span>
             </div>
           </div>
 
-          {/* Action Alerts */}
+          {/* Priority Operations Feed */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Urgent Smart Bins */}
             <div className="p-6 bg-white rounded-3xl border border-slate-200 shadow-xs space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
                 <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                   <AlertOctagon className="w-4 h-4 text-rose-600" />
                   <span>Urgent Smart Bins (≥80%)</span>
                 </h3>
                 <button
                   onClick={() => setActiveTab('BINS')}
-                  className="text-xs font-semibold text-eco-600 hover:text-eco-700 flex items-center gap-1"
+                  className="text-xs font-semibold text-emerald-700 hover:underline flex items-center gap-1"
                 >
-                  <span>View All</span>
+                  <span>View All Bins</span>
                   <ArrowRight className="w-3 h-3" />
                 </button>
               </div>
 
-              {urgentBinsCount === 0 ? (
-                <p className="text-xs text-slate-500 py-4">All smart bins operating below warning thresholds.</p>
+              {urgentBins.length === 0 ? (
+                <p className="text-xs text-slate-500 py-6 text-center">All smart bins operating below warning thresholds.</p>
               ) : (
-                <div className="space-y-2.5">
-                  {bins.filter((b) => b.status === 'URGENT').map((bin) => (
-                    <div
-                      key={bin.binId}
-                      className="p-3.5 rounded-2xl bg-rose-50/50 border border-rose-200 flex items-center justify-between text-xs"
-                    >
+                <div className="space-y-2">
+                  {urgentBins.slice(0, 4).map((b) => (
+                    <div key={b.binId} className="p-3 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-between text-xs">
                       <div>
-                        <span className="font-bold text-slate-900 block">{bin.name}</span>
-                        <span className="text-[11px] text-slate-500">{bin.wardName} • {bin.currentWeightKg} kg</span>
+                        <span className="font-bold text-slate-900 block">{b.binId} — {b.name}</span>
+                        <span className="text-[11px] text-slate-500">{b.wardName} • {b.currentWeightKg || 0} kg</span>
                       </div>
                       <span className="px-2.5 py-1 rounded-full bg-rose-600 text-white font-extrabold text-[11px]">
-                        {bin.currentFillPercent}%
+                        {b.currentFillPercent}%
                       </span>
                     </div>
                   ))}
@@ -254,39 +244,37 @@ export default function AdminHub() {
               )}
             </div>
 
+            {/* Pending Collection Requests */}
             <div className="p-6 bg-white rounded-3xl border border-slate-200 shadow-xs space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
                 <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-amber-600" />
-                  <span>Pending Dumping Inspections</span>
+                  <Calendar className="w-4 h-4 text-amber-600" />
+                  <span>Urgent Collection Requests</span>
                 </h3>
                 <button
-                  onClick={() => setActiveTab('REPORTS')}
-                  className="text-xs font-semibold text-eco-600 hover:text-eco-700 flex items-center gap-1"
+                  onClick={() => setActiveTab('REQUESTS')}
+                  className="text-xs font-semibold text-emerald-700 hover:underline flex items-center gap-1"
                 >
-                  <span>Verify Reports</span>
+                  <span>View All Requests</span>
                   <ArrowRight className="w-3 h-3" />
                 </button>
               </div>
 
-              {pendingReportsCount === 0 ? (
-                <p className="text-xs text-slate-500 py-4">No unverified citizen dumping complaints pending.</p>
+              {pendingRequests.length === 0 ? (
+                <p className="text-xs text-slate-500 py-6 text-center">No pending collection requests from citizens.</p>
               ) : (
-                <div className="space-y-2.5">
-                  {reports.filter((r) => r.status === 'SUBMITTED').slice(0, 3).map((r) => (
-                    <div
-                      key={r._id}
-                      className="p-3.5 rounded-2xl bg-amber-50/50 border border-amber-200 flex items-center justify-between text-xs"
-                    >
+                <div className="space-y-2">
+                  {pendingRequests.slice(0, 4).map((r) => (
+                    <div key={r._id} className="p-3 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-between text-xs">
                       <div>
-                        <span className="font-bold text-slate-900 block">{r.wardName}</span>
-                        <span className="text-[11px] text-slate-500">{r.address}</span>
+                        <span className="font-bold text-slate-900 block">{r.wardName} • {r.category}</span>
+                        <span className="text-[11px] text-slate-500">{r.pickupAddress} • {r.estimatedVolumeKg} kg</span>
                       </div>
                       <button
-                        onClick={() => handleVerifyReport(r._id)}
-                        className="px-3 py-1 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs transition-colors"
+                        onClick={() => setActiveTab('REQUESTS')}
+                        className="px-3 py-1 rounded-xl bg-amber-600 text-white font-bold text-xs"
                       >
-                        Verify (+50 pts)
+                        Assign
                       </button>
                     </div>
                   ))}
@@ -297,341 +285,35 @@ export default function AdminHub() {
         </div>
       )}
 
-      {/* TAB 2: SMART BINS */}
-      {activeTab === 'BINS' && (
-        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-6">
-          <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-            <div>
-              <h3 className="text-base font-bold text-slate-900">Registered Smart Bins</h3>
-              <p className="text-xs text-slate-500">Configure thresholds and provision hardware device tokens.</p>
-            </div>
-            <button
-              onClick={() => {
-                setGeneratedToken(null);
-                setShowBinModal(true);
-              }}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-xs"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Provision New Bin</span>
-            </button>
-          </div>
+      {/* TAB 2: REQUESTS */}
+      {activeTab === 'REQUESTS' && <CollectionRequestsTab />}
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-slate-200 text-slate-500 font-semibold">
-                  <th className="py-3 px-3">Bin ID</th>
-                  <th className="py-3 px-3">Location & Ward</th>
-                  <th className="py-3 px-3">Fill Level</th>
-                  <th className="py-3 px-3">Weight</th>
-                  <th className="py-3 px-3">Battery</th>
-                  <th className="py-3 px-3">Status</th>
-                  <th className="py-3 px-3">Connection</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {bins.map((b) => (
-                  <tr key={b.binId} className="hover:bg-slate-50/50">
-                    <td className="py-3 px-3 font-bold text-slate-800">{b.binId}</td>
-                    <td className="py-3 px-3">
-                      <div className="font-semibold text-slate-900">{b.name}</div>
-                      <div className="text-[11px] text-slate-500">{b.wardName}</div>
-                    </td>
-                    <td className="py-3 px-3 font-bold">
-                      <div className="flex items-center gap-2">
-                        <div className="w-20 h-2 rounded-full bg-slate-100 overflow-hidden">
-                          <div
-                            className={`h-full ${
-                              b.status === 'URGENT' ? 'bg-rose-500' : 'bg-emerald-500'
-                            }`}
-                            style={{ width: `${b.currentFillPercent}%` }}
-                          ></div>
-                        </div>
-                        <span>{b.currentFillPercent}%</span>
-                      </div>
-                    </td>
-                    <td className="py-3 px-3 font-semibold">{b.currentWeightKg} kg</td>
-                    <td className="py-3 px-3 font-semibold">{b.batteryPercent}%</td>
-                    <td className="py-3 px-3">
-                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
-                        b.status === 'URGENT' ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-800'
-                      }`}>
-                        {b.status}
-                      </span>
-                    </td>
-                    <td className="py-3 px-3">
-                      <span className="text-emerald-600 font-semibold flex items-center gap-1">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                        {b.connectionStatus}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+      {/* TAB 3: ROUTE DISPATCH & LIVE MAP */}
+      {activeTab === 'DISPATCH' && <RouteDispatchTab />}
 
-      {/* TAB 3: DUMPING REPORTS */}
-      {activeTab === 'REPORTS' && (
-        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-6">
-          <div className="pb-4 border-b border-slate-100">
-            <h3 className="text-base font-bold text-slate-900">Open-Dumping Complaints Management</h3>
-            <p className="text-xs text-slate-500">Review citizen reports, award eco-credits, and dispatch clearance teams.</p>
-          </div>
+      {/* TAB 4: SMART BINS & TELEMETRY */}
+      {activeTab === 'BINS' && <SmartBinsHealthTab />}
 
-          <div className="space-y-4">
-            {reports.map((r) => (
-              <div
-                key={r._id}
-                className="p-5 rounded-2xl border border-slate-200 bg-slate-50/40 flex flex-col md:flex-row md:items-center justify-between gap-4"
-              >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-sm text-slate-900">{r.wardName}</span>
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                      r.severity === 'HIGH' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'
-                    }`}>
-                      {r.severity} Priority
-                    </span>
-                    <span className="px-2 py-0.5 rounded-full bg-slate-200 text-slate-800 text-[10px] font-bold">
-                      {r.status}
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-600">{r.description || 'Roadside illegal waste dump'}</p>
-                  <div className="text-[11px] text-slate-400">
-                    Location: {r.address} • Submitted: {new Date(r.createdAt).toLocaleDateString()}
-                  </div>
-                </div>
+      {/* TAB 5: ALERTS */}
+      {activeTab === 'ALERTS' && <SmartBinAlertsTab />}
 
-                <div className="flex items-center gap-2">
-                  {r.status === 'SUBMITTED' && (
-                    <button
-                      onClick={() => handleVerifyReport(r._id)}
-                      className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold shadow-xs"
-                    >
-                      Verify (+50 Credits)
-                    </button>
-                  )}
-                  {r.status === 'VERIFIED' && (
-                    <button
-                      onClick={() => handleResolveReport(r._id)}
-                      className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs"
-                    >
-                      Mark Resolved
-                    </button>
-                  )}
-                  {r.status === 'RESOLVED' && (
-                    <span className="text-xs font-bold text-emerald-700 flex items-center gap-1">
-                      <CheckCircle2 className="w-4 h-4" /> Cleared & Closed
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* TAB 6: FLEET & DRIVERS */}
+      {activeTab === 'FLEET' && <VehiclesDriversTab />}
 
-      {/* TAB 4: ROUTES (VRP DISPATCH) */}
-      {activeTab === 'ROUTES' && (
-        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-6">
-          <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-            <div>
-              <h3 className="text-base font-bold text-slate-900">VRP Route Optimization Dispatcher</h3>
-              <p className="text-xs text-slate-500">
-                Algorithm: {routeData?.summary?.algorithm} ({routeData?.summary?.benchmarkTag})
-              </p>
-            </div>
-            <span className="px-3 py-1 rounded-full bg-sky-100 text-sky-800 font-bold text-xs">
-              -28.4% Fuel Reduced
-            </span>
-          </div>
+      {/* TAB 7: WASTE DIVERSION */}
+      {activeTab === 'ANALYTICS' && <WasteAnalyticsTab />}
 
-          <div className="space-y-3">
-            {routeData?.manifest?.map((m) => (
-              <div
-                key={m.identifier}
-                className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 flex items-center justify-between text-xs"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="w-7 h-7 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-xs">
-                    #{m.stopSequence}
-                  </span>
-                  <div>
-                    <span className="font-bold text-slate-900 block">{m.name}</span>
-                    <span className="text-[11px] text-slate-500">{m.wardName} • Fill: {m.fillPercent}%</span>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <span className="font-bold text-slate-700">+{m.legDistanceKm} km</span>
-                  <div className="text-[10px] text-slate-400">Est. Weight: {m.estimatedWeightKg} kg</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* TAB 8: MARKETPLACE & ORDERS */}
+      {activeTab === 'MARKETPLACE' && <MarketplaceAdminTab />}
 
-      {/* TAB 5: RECYCLER DIRECTORY */}
-      {activeTab === 'RECYCLERS' && (
-        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-6">
-          <div className="pb-4 border-b border-slate-100">
-            <h3 className="text-base font-bold text-slate-900">Authorized Recycler & Vendor Directory</h3>
-            <p className="text-xs text-slate-500">Verified scrap aggregators, composting depots, and e-waste collection partners.</p>
-          </div>
+      {/* TAB 9: RECYCLERS DIRECTORY */}
+      {activeTab === 'RECYCLERS' && <RecyclersAdminTab />}
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {recyclers.map((rec) => (
-              <div
-                key={rec._id}
-                className="p-5 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-3 flex flex-col justify-between"
-              >
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-sm text-slate-900">{rec.name}</span>
-                    <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
-                      Verified
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-500 flex items-center gap-1">
-                    <MapPin className="w-3.5 h-3.5" />
-                    {rec.wardName} • {rec.address}
-                  </p>
-                  <div className="flex flex-wrap gap-1 pt-2">
-                    {rec.acceptedMaterials?.map((mat) => (
-                      <span
-                        key={mat}
-                        className="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-[10px] text-slate-600 font-semibold"
-                      >
-                        {mat}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                <div className="pt-3 border-t border-slate-200/80 text-xs font-semibold text-slate-700">
-                  Phone: {rec.contactPhone}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* TAB 10: REWARD CONFIGURATION */}
+      {activeTab === 'REWARDS_CONFIG' && <RewardConfigTab />}
 
-      {/* Provision Smart Bin Modal */}
-      {showBinModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="max-w-md w-full bg-white rounded-3xl p-6 sm:p-8 space-y-4 border border-slate-200 shadow-2xl">
-            <h3 className="text-base font-bold text-slate-900">Provision Smart Bin Hardware</h3>
-
-            {generatedToken ? (
-              <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 space-y-3">
-                <span className="text-xs font-bold text-emerald-900 block">
-                  🎉 Bin Provisioned! Flash Token into ESP32:
-                </span>
-                <div className="p-3 bg-white rounded-xl border border-emerald-300 font-mono text-xs text-slate-800 break-all select-all">
-                  {generatedToken}
-                </div>
-                <p className="text-[11px] text-emerald-700">
-                  This token is only shown once. It will be authenticated in the <code>X-Device-Token</code> header.
-                </p>
-                <button
-                  onClick={() => setShowBinModal(false)}
-                  className="w-full py-2 rounded-xl bg-slate-900 text-white text-xs font-semibold"
-                >
-                  Done
-                </button>
-              </div>
-            ) : (
-              <form onSubmit={handleCreateBin} className="space-y-3 text-xs">
-                <div>
-                  <label className="font-semibold text-slate-700 block mb-1">Bin Identifier *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. BIN_SRG_11"
-                    value={newBinData.binId}
-                    onChange={(e) => setNewBinData({ ...newBinData, binId: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300"
-                  />
-                </div>
-
-                <div>
-                  <label className="font-semibold text-slate-700 block mb-1">Name / Landmark *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Dalgate Ghat 3"
-                    value={newBinData.name}
-                    onChange={(e) => setNewBinData({ ...newBinData, name: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="font-semibold text-slate-700 block mb-1">Ward Name</label>
-                    <input
-                      type="text"
-                      value={newBinData.wardName}
-                      onChange={(e) => setNewBinData({ ...newBinData, wardName: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-300"
-                    />
-                  </div>
-                  <div>
-                    <label className="font-semibold text-slate-700 block mb-1">Depth (cm)</label>
-                    <input
-                      type="number"
-                      value={newBinData.depthCm}
-                      onChange={(e) => setNewBinData({ ...newBinData, depthCm: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-300"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="font-semibold text-slate-700 block mb-1">Longitude</label>
-                    <input
-                      type="text"
-                      value={newBinData.lng}
-                      onChange={(e) => setNewBinData({ ...newBinData, lng: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-300"
-                    />
-                  </div>
-                  <div>
-                    <label className="font-semibold text-slate-700 block mb-1">Latitude</label>
-                    <input
-                      type="text"
-                      value={newBinData.lat}
-                      onChange={(e) => setNewBinData({ ...newBinData, lat: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-300"
-                    />
-                  </div>
-                </div>
-
-                <div className="pt-2 flex justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowBinModal(false)}
-                    className="px-3 py-2 rounded-xl bg-slate-100 text-slate-700 font-semibold"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 rounded-xl bg-slate-900 text-white font-semibold"
-                  >
-                    Generate Token & Save
-                  </button>
-                </div>
-              </form>
-            )}
-          </div>
-        </div>
-      )}
+      {/* TAB 11: EXPORTS */}
+      {activeTab === 'EXPORTS' && <ReportsExportTab />}
     </div>
   );
 }

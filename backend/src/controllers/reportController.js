@@ -85,9 +85,27 @@ exports.getReports = async (req, res, next) => {
     if (severity) query.severity = severity;
 
     const reports = await DumpingReport.find(query)
-      .populate('reportedById', 'name email wardName')
+      .populate('citizenId', 'name email wardName')
       .sort({ createdAt: -1 })
       .limit(100);
+
+    res.status(200).json({
+      success: true,
+      count: reports.length,
+      data: reports,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc    Citizen: View own submitted dumping complaints
+// @route   GET /api/v1/reports/my
+// @access  Private (Citizen)
+exports.getMyReports = async (req, res, next) => {
+  try {
+    const reports = await DumpingReport.find({ citizenId: req.user.id })
+      .sort({ createdAt: -1 });
 
     res.status(200).json({
       success: true,

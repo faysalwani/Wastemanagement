@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { 
   User as UserIcon, 
   Award, 
@@ -15,7 +16,9 @@ import {
   Trophy,
   PieChart as PieIcon,
   Layers,
-  ArrowUpRight
+  ArrowUpRight,
+  ShoppingBag,
+  Wallet
 } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -37,6 +40,7 @@ export default function Profile() {
   const [ledger, setLedger] = useState([]);
   const [leaderboard, setLeaderboard] = useState([]);
   const [diversionData, setDiversionData] = useState(null);
+  const [personalDiversion, setPersonalDiversion] = useState(null);
   const [activeTab, setActiveTab] = useState('DIVERSION'); // DIVERSION, LEDGER, LEADERBOARD
 
   useEffect(() => {
@@ -54,6 +58,11 @@ export default function Profile() {
     api.get('/analytics/diversion')
       .then((res) => setDiversionData(res.data.data))
       .catch(() => setDiversionData(null));
+
+    // Fetch Personal Diversion Metrics
+    api.get('/credits/my-diversion')
+      .then((res) => setPersonalDiversion(res.data.data))
+      .catch(() => setPersonalDiversion(null));
   }, []);
 
   // Compute tier progress
@@ -185,6 +194,23 @@ export default function Profile() {
                 🏆 Top Tier Achieved: Eco-Champion
               </div>
             )}
+
+            <div className="mt-4 pt-3 border-t border-emerald-500/30 flex items-center gap-2">
+              <Link
+                to="/wallet"
+                className="flex-1 py-2 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-bold text-center transition-colors flex items-center justify-center gap-1"
+              >
+                <Wallet className="w-3.5 h-3.5" />
+                <span>My Wallet</span>
+              </Link>
+              <Link
+                to="/marketplace"
+                className="flex-1 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-amber-950 text-xs font-bold text-center transition-colors flex items-center justify-center gap-1 shadow-xs"
+              >
+                <ShoppingBag className="w-3.5 h-3.5" />
+                <span>Redeem</span>
+              </Link>
+            </div>
           </div>
         </div>
 
@@ -342,6 +368,35 @@ export default function Profile() {
           {/* TAB 1: Waste Diversion Analytics */}
           {activeTab === 'DIVERSION' && (
             <div className="space-y-6">
+              {/* Personal Diversion Rate Highlight */}
+              <div className="p-5 rounded-2xl bg-gradient-to-r from-emerald-800 to-teal-900 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
+                <div>
+                  <span className="text-[11px] font-bold text-emerald-200 uppercase tracking-wider block">
+                    Your Personal Household Diversion Efficiency
+                  </span>
+                  <div className="text-2xl font-extrabold mt-1">
+                    {personalDiversion?.diversionRatePercent ?? 0}% Diverted from Landfill
+                  </div>
+                  <p className="text-xs text-emerald-100 mt-0.5">
+                    Total: {personalDiversion?.totalDivertedKg ?? 0} kg diverted ({personalDiversion?.compostedKg ?? 0} kg composted + {personalDiversion?.exchangedKg ?? 0} kg exchanged).
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Link
+                    to="/wallet"
+                    className="px-3.5 py-2 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-bold transition-colors"
+                  >
+                    View Wallet
+                  </Link>
+                  <Link
+                    to="/marketplace"
+                    className="px-3.5 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-amber-950 text-xs font-bold transition-colors shadow-xs"
+                  >
+                    Redeem EC
+                  </Link>
+                </div>
+              </div>
+
               {/* Formula & Overall Score */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="p-5 rounded-2xl bg-emerald-50 border border-emerald-200 flex flex-col justify-between">

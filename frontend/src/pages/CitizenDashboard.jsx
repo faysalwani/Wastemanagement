@@ -9,65 +9,67 @@ import {
   AlertTriangle, 
   Award, 
   TrendingUp, 
-  Bell, 
   CheckCircle2, 
   ArrowRight, 
   MapPin, 
   Clock, 
   Sparkles,
   Layers,
-  ChevronRight
+  ChevronRight,
+  LogOut,
+  User,
+  Activity,
+  Calendar,
+  AlertCircle,
+  ShoppingBag,
+  Package,
+  Wallet
 } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
 export default function CitizenDashboard() {
-  const { user } = useAuth();
-  const [diversion, setDiversion] = useState(null);
-  const [recentListings, setRecentListings] = useState([]);
-  const [myReports, setMyReports] = useState([]);
-  const [wardBins, setWardBins] = useState([]);
+  const { user, logout } = useAuth() || {};
+  const [summary, setSummary] = useState(null);
+  const [myDiversion, setMyDiversion] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchCitizenData = async () => {
-      try {
-        const [divRes, listRes, repRes, binRes] = await Promise.all([
-          api.get('/analytics/diversion'),
-          api.get('/exchange/listings'),
-          api.get('/reports'),
-          api.get('/iot/bins'),
-        ]);
+  const fetchDashboardSummary = async () => {
+    setLoading(true);
+    try {
+      const [sumRes, divRes] = await Promise.all([
+        api.get('/credits/citizen-summary').catch(() => ({ data: { success: false } })),
+        api.get('/credits/my-diversion').catch(() => ({ data: { success: false } })),
+      ]);
 
-        if (divRes.data.success) setDiversion(divRes.data.data);
-        if (listRes.data.success) setRecentListings(listRes.data.data.slice(0, 3));
-        if (repRes.data.success) {
-          // Filter reports submitted by current user or in current ward
-          const userWardReports = repRes.data.data.filter(
-            (r) => r.wardName === user?.wardName
-          );
-          setMyReports(userWardReports.slice(0, 3));
-        }
-        if (binRes.data.success) {
-          const binsInWard = binRes.data.data.filter(
-            (b) => b.wardName === user?.wardName
-          );
-          setWardBins(binsInWard);
-        }
-      } catch (err) {
-        console.warn('Error fetching citizen telemetry:', err);
-      } finally {
-        setLoading(false);
+      if (sumRes.data.success) {
+        setSummary(sumRes.data.data);
       }
-    };
+      if (divRes.data.success) {
+        setMyDiversion(divRes.data.data);
+      }
+    } catch (err) {
+      console.error('Failed to load citizen summary:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    fetchCitizenData();
-  }, [user]);
+  useEffect(() => {
+    fetchDashboardSummary();
+  }, []);
+
+  const citizenUser = summary?.user || user;
+  const personalDivertedKg = myDiversion?.totalDivertedKg ?? summary?.personalDivertedKg ?? 0;
+  const personalDiversionRate = myDiversion?.diversionRatePercent ?? 0;
+  const activeListingsCount = summary?.activeListingsCount || 0;
+  const wardSmartBins = summary?.wardSmartBins || [];
+  const recentTransactions = summary?.recentTransactions || [];
 
   const quickActions = [
     {
       title: 'AI Waste Scanner',
-      desc: 'Instant visual classification with MobileNetV3 & circular disposal advice.',
+      desc: 'Instant visual classification with MobileNetV3 and recommended disposal pathway.',
       link: '/scan',
       icon: Camera,
       color: 'bg-emerald-500',
@@ -75,19 +77,51 @@ export default function CitizenDashboard() {
     },
     {
       title: 'Composting Assistant',
-      desc: 'Scientific C:N calculator (Greens vs Browns) for kitchen bio-waste.',
+      desc: 'Scientific organic waste calculator, C:N balance, and batch lifecycle tracking.',
       link: '/compost',
       icon: Sprout,
       color: 'bg-lime-600',
-      badge: 'Organic',
+      badge: '+20 Pts',
+    },
+    {
+      title: 'Rewards Marketplace',
+      desc: 'Redeem earned Eco-Credits for home composting aerators, bins, and jute bags.',
+      link: '/marketplace',
+      icon: ShoppingBag,
+      color: 'bg-emerald-700',
+      badge: 'Redeem EC',
+    },
+    {
+      title: 'Eco-Credits Wallet',
+      desc: 'View your tier ranking, points balance, and auditable transaction ledger.',
+      link: '/wallet',
+      icon: Wallet,
+      color: 'bg-amber-600',
+      badge: 'My Wallet',
     },
     {
       title: 'P2P Resource Exchange',
-      desc: 'Trade reusable cartons, glass bottles, and organic waste with neighbors.',
+      desc: 'Give away clean cardboard cartons, bottles, and organic waste to neighbours.',
       link: '/exchange',
       icon: Repeat,
       color: 'bg-blue-600',
       badge: '+25 Pts',
+    },
+    {
+      title: 'Truck Proximity Radar',
+      desc: 'Live collection timetable and 500m incoming vehicle radar.',
+      link: '/collection',
+      icon: Truck,
+      color: 'bg-amber-500',
+      badge: 'Live Radar',
+    },
+    {
+      title: 'Verified Recyclers',
+      desc: 'Locate certified scrap depots and recycling drop-off stations in Srinagar.',
+      link: '/recyclers',
+      icon: Recycle,
+      color: 'bg-teal-600',
+      badge: 'Directory',
     },
     {
       title: 'Report Illegal Dumping',
@@ -97,90 +131,172 @@ export default function CitizenDashboard() {
       color: 'bg-rose-500',
       badge: '+50 Pts',
     },
-    {
-      title: 'Truck Proximity Radar',
-      desc: 'Track incoming municipal compactor vehicles within 500m of your home.',
-      link: '/collection',
-      icon: Truck,
-      color: 'bg-amber-500',
-      badge: 'Live Radar',
-    },
   ];
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
-      {/* Welcome Banner */}
+      {/* Header Banner */}
       <div className="p-6 sm:p-8 bg-gradient-to-r from-emerald-800 to-teal-900 rounded-3xl text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-2">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-xs font-semibold text-emerald-200">
             <MapPin className="w-3.5 h-3.5" />
-            <span>Ward: {user?.wardName || 'Lal Chowk'}</span>
+            <span>Ward: {citizenUser?.wardName || 'Srinagar'}</span>
             <span>•</span>
-            <span className="capitalize">{user?.role} Portal</span>
+            <span className="capitalize">{citizenUser?.accountStatus || 'Active'} Citizen</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-            Welcome back, {user?.name || 'Citizen'}!
+            Welcome back, {citizenUser?.name || 'Citizen'}!
           </h1>
           <p className="text-xs sm:text-sm text-emerald-100 max-w-xl">
-            You are actively participating in Srinagar's decentralized municipal waste reduction and circular recovery network.
+            Decentralized resource recovery, household composting, and circular waste diversion portal for Srinagar.
           </p>
         </div>
 
-        {/* Eco-Credits Highlight Card */}
-        <div className="p-4 rounded-2xl bg-white/10 backdrop-blur-xs border border-white/20 flex items-center gap-4 flex-shrink-0">
-          <div className="w-12 h-12 rounded-xl bg-amber-400 text-amber-950 flex items-center justify-center font-extrabold shadow-md">
-            <Award className="w-6 h-6" />
-          </div>
-          <div>
-            <div className="text-xs font-medium text-emerald-200">Eco-Credits Balance</div>
-            <div className="text-2xl font-extrabold text-white">{user?.ecoCredits || 0} pts</div>
-            <div className="text-[10px] font-bold text-amber-300 uppercase tracking-wider">
-              {user?.tier || 'BRONZE'} TIER
+        {/* Profile Shortcuts & Eco-Credits Pill */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <Link
+            to="/wallet"
+            className="p-4 rounded-2xl bg-white/10 hover:bg-white/20 transition-all backdrop-blur-xs border border-white/20 flex items-center gap-4 flex-shrink-0 group cursor-pointer"
+            title="Open Eco-Credits Wallet"
+          >
+            <div className="w-12 h-12 rounded-xl bg-amber-400 text-amber-950 flex items-center justify-center font-extrabold shadow-md group-hover:scale-105 transition-transform">
+              <Award className="w-6 h-6" />
             </div>
+            <div>
+              <div className="text-xs font-medium text-emerald-200 flex items-center gap-1">
+                <span>Eco-Credits Balance</span>
+                <ChevronRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+              </div>
+              <div className="text-2xl font-extrabold text-white">{citizenUser?.ecoCredits || 0} pts</div>
+              <div className="text-[10px] font-bold text-amber-300 uppercase tracking-wider">
+                {citizenUser?.tier || 'BRONZE'} TIER • OPEN WALLET
+              </div>
+            </div>
+          </Link>
+
+          <div className="flex items-center gap-2">
+            <Link
+              to="/profile"
+              className="p-3 rounded-2xl bg-white/10 hover:bg-white/20 text-white transition-colors"
+              title="View Profile"
+            >
+              <User className="w-5 h-5" />
+            </Link>
+            <button
+              onClick={logout}
+              className="p-3 rounded-2xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 hover:text-white transition-colors"
+              title="Log Out"
+            >
+              <LogOut className="w-5 h-5" />
+            </button>
           </div>
         </div>
       </div>
 
-      {/* 4 Community KPI Metrics */}
+      {/* Personal Waste Diversion Banner */}
+      <div className="p-6 bg-white rounded-3xl border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="space-y-2 flex-1">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+              <TrendingUp className="w-4 h-4 text-emerald-600" />
+              Personal Waste Diversion Efficiency
+            </span>
+            <span className="text-sm font-extrabold text-emerald-700">
+              {personalDiversionRate}% Diverted
+            </span>
+          </div>
+          <div className="w-full h-3 rounded-full bg-slate-100 overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-teal-500 to-emerald-600 rounded-full transition-all duration-500"
+              style={{ width: `${Math.min(100, Math.max(personalDiversionRate, 0))}%` }}
+            ></div>
+          </div>
+          <div className="flex flex-wrap items-center justify-between text-xs text-slate-500 gap-2 pt-1">
+            <span>
+              Total Household Waste Generated: <strong>{myDiversion?.totalGeneratedKg || personalDivertedKg || 0} kg</strong>
+            </span>
+            <span>
+              Diverted from Landfill: <strong className="text-emerald-700">{personalDivertedKg} kg</strong> ({myDiversion?.compostedKg || 0}kg composted + {myDiversion?.exchangedKg || 0}kg reused)
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <Link
+            to="/marketplace"
+            className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5"
+          >
+            <ShoppingBag className="w-4 h-4" />
+            <span>Rewards Store</span>
+          </Link>
+          <Link
+            to="/recyclers"
+            className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors flex items-center gap-1.5"
+          >
+            <Recycle className="w-4 h-4 text-emerald-600" />
+            <span>Recycling Centers</span>
+          </Link>
+        </div>
+      </div>
+
+      {/* Real KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-5 rounded-3xl bg-white border border-slate-200 shadow-xs">
-          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Diversion Rate</span>
-          <div className="text-2xl sm:text-3xl font-extrabold text-emerald-700 mt-2">
-            {diversion?.diversionRatePercent ?? 72.4}%
+        <div className="p-5 rounded-3xl bg-white border border-slate-200 shadow-xs space-y-1">
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+            Personal Diverted Waste
+          </span>
+          <div className="text-2xl sm:text-3xl font-extrabold text-emerald-700">
+            {personalDivertedKg > 0 ? `${personalDivertedKg} kg` : '0 kg'}
           </div>
-          <span className="text-[11px] text-slate-500 font-medium">Reused • Composted • Recycled</span>
+          <span className="text-[11px] text-slate-500 font-medium">
+            {personalDivertedKg > 0 ? 'Composted & Exchanged' : 'No waste-diversion activity recorded yet'}
+          </span>
         </div>
 
-        <div className="p-5 rounded-3xl bg-white border border-slate-200 shadow-xs">
-          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Reward Points</span>
-          <div className="text-2xl sm:text-3xl font-extrabold text-amber-600 mt-2">
-            {user?.ecoCredits || 0}
+        <div className="p-5 rounded-3xl bg-white border border-slate-200 shadow-xs space-y-1">
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+            Eco-Credits Tier
+          </span>
+          <div className="text-2xl sm:text-3xl font-extrabold text-amber-600">
+            {citizenUser?.tier || 'BRONZE'}
           </div>
-          <span className="text-[11px] text-slate-500 font-medium">Redeemable at local partners</span>
+          <span className="text-[11px] text-slate-500 font-medium">
+            {citizenUser?.ecoCredits || 0} total points earned
+          </span>
         </div>
 
-        <div className="p-5 rounded-3xl bg-white border border-slate-200 shadow-xs">
-          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Active P2P Listings</span>
-          <div className="text-2xl sm:text-3xl font-extrabold text-blue-600 mt-2">
-            {recentListings.length}
+        <div className="p-5 rounded-3xl bg-white border border-slate-200 shadow-xs space-y-1">
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+            Active Exchange Listings
+          </span>
+          <div className="text-2xl sm:text-3xl font-extrabold text-blue-600">
+            {activeListingsCount}
           </div>
-          <span className="text-[11px] text-slate-500 font-medium">Available for community pickup</span>
+          <span className="text-[11px] text-slate-500 font-medium">
+            {activeListingsCount > 0 ? 'Available for neighbor pickup' : 'No active listings'}
+          </span>
         </div>
 
-        <div className="p-5 rounded-3xl bg-white border border-slate-200 shadow-xs">
-          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Ward Smart Bins</span>
-          <div className="text-2xl sm:text-3xl font-extrabold text-purple-600 mt-2">
-            {wardBins.length || 3}
+        <div className="p-5 rounded-3xl bg-white border border-slate-200 shadow-xs space-y-1">
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+            Ward Smart Bins
+          </span>
+          <div className="text-2xl sm:text-3xl font-extrabold text-purple-600">
+            {wardSmartBins.length}
           </div>
-          <span className="text-[11px] text-slate-500 font-medium">IoT telematics connected</span>
+          <span className="text-[11px] text-slate-500 font-medium">
+            {wardSmartBins.length > 0 ? `In ${citizenUser?.wardName || 'Ward'}` : 'No smart bins in this ward'}
+          </span>
         </div>
       </div>
 
-      {/* Quick Action Grid */}
+      {/* Citizen Action Hub */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-slate-900">Citizen Action Hub</h2>
-          <span className="text-xs text-slate-500">Pick an activity to divert waste and earn points</span>
+          <div>
+            <h2 className="text-lg font-bold text-slate-900">Citizen Action Hub</h2>
+            <p className="text-xs text-slate-500">Pick an environmental activity to divert waste and earn verified Eco-Credits.</p>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -220,77 +336,100 @@ export default function CitizenDashboard() {
         </div>
       </div>
 
-      {/* Two Column Layout: Ward Smart Bins & Community Exchange */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Ward Smart Bins Telematics */}
-        <div className="p-6 bg-white rounded-3xl border border-slate-200 shadow-xs space-y-4">
-          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-            <div>
-              <h3 className="text-sm font-bold text-slate-900">Nearby Smart Bins ({user?.wardName || 'Lal Chowk'})</h3>
-              <p className="text-[11px] text-slate-500">Live fill levels updated by ESP32 sensors</p>
-            </div>
-            <Link to="/collection" className="text-xs font-semibold text-emerald-700 hover:underline">
-              Radar View
-            </Link>
+      {/* Traceable Eco-Credits Recent Ledger */}
+      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4">
+        <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+          <div>
+            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <Award className="w-4 h-4 text-amber-500" />
+              <span>Traceable Eco-Credit Activity Ledger</span>
+            </h3>
+            <p className="text-[11px] text-slate-500">Every earned credit is auditable through backend transaction keys.</p>
           </div>
-
-          {wardBins.length === 0 ? (
-            <p className="text-xs text-slate-500 py-4">No smart bins currently provisioned in your ward.</p>
-          ) : (
-            <div className="space-y-3">
-              {wardBins.slice(0, 3).map((bin) => (
-                <div key={bin.binId} className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
-                  <div>
-                    <span className="font-bold text-slate-900 block">{bin.name}</span>
-                    <span className="text-[11px] text-slate-500">{bin.currentWeightKg} kg • Temp: {bin.temperatureC}°C</span>
-                  </div>
-                  <div className="text-right">
-                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
-                      bin.status === 'URGENT' ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-800'
-                    }`}>
-                      {bin.currentFillPercent}% Fill
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          <Link
+            to="/profile"
+            className="text-xs font-semibold text-emerald-700 hover:underline flex items-center gap-1"
+          >
+            <span>Full Ledger</span>
+            <ChevronRight className="w-3 h-3" />
+          </Link>
         </div>
 
-        {/* Community Resource Listings */}
-        <div className="p-6 bg-white rounded-3xl border border-slate-200 shadow-xs space-y-4">
-          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-            <div>
-              <h3 className="text-sm font-bold text-slate-900">Community Resource Exchange</h3>
-              <p className="text-[11px] text-slate-500">Available recyclable items & organic scraps</p>
-            </div>
-            <Link to="/exchange" className="text-xs font-semibold text-emerald-700 hover:underline">
-              Browse All
-            </Link>
+        {recentTransactions.length === 0 ? (
+          <div className="py-8 text-center space-y-2">
+            <Award className="w-8 h-8 text-slate-300 mx-auto" />
+            <p className="text-xs font-semibold text-slate-600">No Eco-Credit activity yet.</p>
+            <p className="text-[11px] text-slate-400">Scan waste, start a compost batch, or report dumping to earn points.</p>
           </div>
-
-          {recentListings.length === 0 ? (
-            <p className="text-xs text-slate-500 py-4">No active community resource listings found.</p>
-          ) : (
-            <div className="space-y-3">
-              {recentListings.map((item) => (
-                <div key={item._id} className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
-                  <div>
-                    <span className="font-bold text-slate-900 block">{item.title}</span>
-                    <span className="text-[11px] text-slate-500">{item.category} • {item.wardName}</span>
-                  </div>
-                  <Link
-                    to="/exchange"
-                    className="px-3 py-1 rounded-xl bg-white border border-slate-300 text-slate-700 font-semibold hover:bg-slate-100 transition-colors"
-                  >
-                    Claim Item
-                  </Link>
+        ) : (
+          <div className="divide-y divide-slate-100">
+            {recentTransactions.map((tx) => (
+              <div key={tx._id} className="py-3 flex items-center justify-between text-xs">
+                <div className="space-y-0.5">
+                  <span className="font-bold text-slate-900 block">
+                    {tx.description || tx.activityType.replace(/_/g, ' ')}
+                  </span>
+                  <span className="text-[11px] text-slate-400">
+                    {new Date(tx.timestamp || tx.createdAt).toLocaleString()}
+                  </span>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+                <div className="text-right">
+                  <span className="font-extrabold text-emerald-600 text-sm">+{tx.creditsEarned} pts</span>
+                  <span className="text-[10px] text-slate-400 block">Balance: {tx.balanceAfter} pts</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
+
+      {/* Ward Smart Bins Radar Snapshot */}
+      {wardSmartBins.length > 0 && (
+        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+            <div>
+              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <Recycle className="w-4 h-4 text-purple-600" />
+                <span>Smart Bins in {citizenUser?.wardName || 'Your Ward'}</span>
+              </h3>
+              <p className="text-[11px] text-slate-500">Live fill percentage and capacity monitor.</p>
+            </div>
+            <Link
+              to="/smart-bins"
+              className="text-xs font-semibold text-emerald-700 hover:underline flex items-center gap-1"
+            >
+              <span>Explore Map</span>
+              <ChevronRight className="w-3 h-3" />
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            {wardSmartBins.map((bin) => (
+              <div key={bin.binId} className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono font-bold text-xs text-slate-900">{bin.binId}</span>
+                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold ${
+                    bin.currentFillPercent >= 80
+                      ? 'bg-rose-100 text-rose-800'
+                      : bin.currentFillPercent >= 50
+                      ? 'bg-amber-100 text-amber-800'
+                      : 'bg-emerald-100 text-emerald-800'
+                  }`}>
+                    {bin.currentFillPercent}% Full
+                  </span>
+                </div>
+                <div className="text-xs font-semibold text-slate-800">{bin.name}</div>
+                <div className="w-full h-1.5 rounded-full bg-slate-200 overflow-hidden">
+                  <div
+                    className={`h-full ${bin.currentFillPercent >= 80 ? 'bg-rose-500' : 'bg-emerald-500'}`}
+                    style={{ width: `${bin.currentFillPercent}%` }}
+                  ></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

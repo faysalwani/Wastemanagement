@@ -90,6 +90,11 @@ const SmartBinSchema = new mongoose.Schema(
       enum: ['NORMAL', 'WARNING', 'URGENT', 'STALE', 'OFFLINE'],
       default: 'NORMAL',
     },
+    lastCollectedAt: {
+      type: Date,
+      default: null,
+      description: 'Timestamp of the most recent physical waste collection sweep',
+    },
     deviceToken: {
       type: String,
       select: false,
