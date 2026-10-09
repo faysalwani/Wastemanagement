@@ -1,0 +1,184 @@
+{
+  "status": "EVALUATION_REPORT",
+  "modelName": "MobileNetV3-Small (Fine-Tuned Transfer Learning)",
+  "dataset": "EcoCycle Srinagar 9-Class Dataset (TrashNet + Garbage-12 + GIZ E-Waste)",
+  "isTrained": true,
+  "metrics": {
+    "accuracy": 0.9494,
+    "macroPrecision": 0.952,
+    "macroRecall": 0.9519,
+    "macroF1Score": 0.9517,
+    "weightedF1Score": 0.9493,
+    "averageInferenceMs": 1.24,
+    "modelSizeBytes": 6239743
+  },
+  "perClassPerformance": [
+    {
+      "class": "Plastic",
+      "precision": 0.9483,
+      "recall": 0.9167,
+      "f1": 0.9322,
+      "support": 180
+    },
+    {
+      "class": "Paper/Cardboard",
+      "precision": 0.9553,
+      "recall": 0.95,
+      "f1": 0.9526,
+      "support": 180
+    },
+    {
+      "class": "Glass",
+      "precision": 0.9643,
+      "recall": 0.9,
+      "f1": 0.931,
+      "support": 180
+    },
+    {
+      "class": "Metal",
+      "precision": 0.9135,
+      "recall": 0.9548,
+      "f1": 0.9337,
+      "support": 177
+    },
+    {
+      "class": "Organic/Food Waste",
+      "precision": 0.9732,
+      "recall": 0.9797,
+      "f1": 0.9764,
+      "support": 148
+    },
+    {
+      "class": "E-Waste",
+      "precision": 0.9808,
+      "recall": 0.9623,
+      "f1": 0.9714,
+      "support": 53
+    },
+    {
+      "class": "Textile",
+      "precision": 0.9508,
+      "recall": 0.9667,
+      "f1": 0.9587,
+      "support": 180
+    },
+    {
+      "class": "Hazardous/Special Waste",
+      "precision": 0.9524,
+      "recall": 0.9929,
+      "f1": 0.9722,
+      "support": 141
+    },
+    {
+      "class": "Residual Waste",
+      "precision": 0.9291,
+      "recall": 0.944,
+      "f1": 0.9365,
+      "support": 125
+    }
+  ],
+  "confusionMatrix": [
+    [
+      165,
+      1,
+      2,
+      8,
+      1,
+      0,
+      0,
+      0,
+      3
+    ],
+    [
+      0,
+      171,
+      0,
+      0,
+      2,
+      0,
+      3,
+      2,
+      2
+    ],
+    [
+      6,
+      1,
+      162,
+      6,
+      1,
+      0,
+      4,
+      0,
+      0
+    ],
+    [
+      2,
+      0,
+      0,
+      169,
+      0,
+      0,
+      0,
+      5,
+      1
+    ],
+    [
+      0,
+      0,
+      2,
+      0,
+      145,
+      0,
+      1,
+      0,
+      0
+    ],
+    [
+      0,
+      2,
+      0,
+      0,
+      0,
+      51,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      2,
+      0,
+      0,
+      0,
+      1,
+      174,
+      0,
+      3
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      140,
+      0
+    ],
+    [
+      1,
+      2,
+      2,
+      2,
+      0,
+      0,
+      0,
+      0,
+      118
+    ]
+  ],
+  "testSampleSize": 1364,
+  "bestValAccuracy": 0.9406,
+  "bestEpoch": 9
+}
