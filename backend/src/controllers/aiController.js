@@ -150,6 +150,7 @@ exports.classifyImage = async (req, res, next) => {
     const filePath = req.file.path;
     const fileUrl = `/uploads/${req.file.filename}`;
     const aiServiceUrl = process.env.AI_SERVICE_URL || 'http://127.0.0.1:8000';
+    const aiServiceApiKey = process.env.AI_SERVICE_API_KEY || '';
 
     let classificationResult;
 
@@ -158,8 +159,13 @@ exports.classifyImage = async (req, res, next) => {
       const form = new FormData();
       form.append('image', fs.createReadStream(filePath), req.file.filename);
 
+      const headers = form.getHeaders();
+      if (aiServiceApiKey) {
+        headers['X-API-Key'] = aiServiceApiKey;
+      }
+
       const aiResponse = await axios.post(`${aiServiceUrl}/classify`, form, {
-        headers: form.getHeaders(),
+        headers,
         timeout: 4000, // 4-second timeout
       });
 
@@ -231,11 +237,16 @@ exports.classifyImage = async (req, res, next) => {
 exports.getAIStatus = async (req, res, next) => {
   try {
     const aiServiceUrl = process.env.AI_SERVICE_URL || 'http://127.0.0.1:8000';
+    const aiServiceApiKey = process.env.AI_SERVICE_API_KEY || '';
     let pythonConnected = false;
     let pythonData = null;
 
     try {
-      const response = await axios.get(`${aiServiceUrl}/health`, { timeout: 1500 });
+      const headers = {};
+      if (aiServiceApiKey) {
+        headers['X-API-Key'] = aiServiceApiKey;
+      }
+      const response = await axios.get(`${aiServiceUrl}/health`, { headers, timeout: 1500 });
       pythonConnected = true;
       pythonData = response.data;
     } catch {

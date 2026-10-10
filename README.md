@@ -39,7 +39,7 @@
    - [Public Citizen Registration Flow](#public-citizen-registration-flow)
    - [Staff & Privileged Login (Driver, Admin, Super Admin)](#staff--privileged-login-driver-admin-super-admin)
    - [Pre-Configured Evaluation Accounts](#pre-configured-evaluation-accounts)
-8. [AI Microservice (MobileNetV3 & VRP Engine)](#8-ai-microservice-mobilenetv3--vrp-engine)
+8. [AI Microservice (MobileNetV3 & Independent Deployment)](#8-ai-microservice-mobilenetv3--independent-deployment)
 9. [IoT Hardware & Embedded Firmware](#9-iot-hardware--embedded-firmware)
 10. [Scientific Formulas & Mathematical Formulations](#10-scientific-formulas--mathematical-formulations)
 11. [REST API & Real-Time WebSocket Catalog](#11-rest-api--real-time-websocket-catalog)
@@ -178,12 +178,20 @@ Waste management/
 │                                   # Marketplace, Wallet, Orders, Recyclers, etc.
 │
 ├── ai-service/                     # Python FastAPI Deep Learning Microservice
-│   ├── requirements.txt            # Python dependencies (FastAPI, PyTorch, torchvision, OR-Tools)
-│   ├── train.py                    # MobileNetV3 transfer learning training pipeline
+│   ├── Dockerfile                  # Container definition with healthcheck & caching
+│   ├── .dockerignore               # Production image exclusions (datasets, caches)
+│   ├── requirements.txt            # Python dependencies (FastAPI, PyTorch, torchvision, OR-Tools, pytest)
+│   ├── train_9class.py             # MobileNetV3 transfer learning training pipeline (9 classes)
+│   ├── evaluate_model.py           # Evaluation script generating confusion matrix & metrics
 │   ├── src/
-│   │   ├── main.py                 # FastAPI application endpoints (/classify, /optimize-route)
-│   │   └── classifier.py           # PyTorch inference engine with confidence thresholding
-│   └── models/                     # Serialized PyTorch model weights (.pth)
+│   │   ├── main.py                 # FastAPI application endpoints (/health, /model-info, /classify, /version)
+│   │   └── classifier.py           # PyTorch MobileNetV3 inference engine with confidence thresholding
+│   ├── tests/
+│   │   ├── test_inference.py       # Pytest unit tests for classification & validation
+│   │   └── verify_standalone.py    # Zero-dependency standalone test suite
+│   ├── models/
+│   │   └── waste_model.pt          # Production PyTorch model artifact (MobileNetV3-Small, 6.24 MB)
+│   └── README.md                   # Dedicated independent AI microservice documentation
 │
 ├── iot/                            # Physical Embedded Systems & Virtual Simulator
 │   ├── firmware/                   # ESP32 C++ Production Firmware
@@ -462,14 +470,16 @@ For examination and live demonstration, the following accounts are pre-seeded in
 
 ---
 
-## 8. AI Microservice (MobileNetV3 & VRP Engine)
+## 8. AI Microservice (MobileNetV3 & Independent Deployment)
 
-The `ai-service/` microservice provides deep learning inference and combinatorial route optimization.
+The `ai-service/` microservice is an independently deployable, decoupled Python FastAPI service providing deep-learning waste classification and combinatorial route optimization.
 
-### Waste Classification Architecture
+### 8.1 Model Specifications & Architecture
 * **Backbone:** MobileNetV3-Small pre-trained on ImageNet, fine-tuned via transfer learning.
 * **Classifier Head:** Dropout (0.2) $\rightarrow$ Linear(1024, 256) $\rightarrow$ ReLU $\rightarrow$ Linear(256, 9 classes).
-* **Output Classes:**
+* **Weights Artifact:** `ai-service/models/waste_model.pt` (6.24 MB PyTorch state dictionary).
+* **Input Preprocessing:** RGB $224 \times 224$, Normalized with ImageNet mean `[0.485, 0.456, 0.406]` and std `[0.229, 0.224, 0.225]`.
+* **Output Classes (Strict 9-Class Taxonomy):**
   1. `ORGANIC_BIODEGRADABLE` (Food scraps, vegetable peels, fruit waste)
   2. `PLASTIC_RECYCLABLE` (PET bottles, HDPE containers)
   3. `PAPER_CARDBOARD` (Office paper, cartons, newspaper)
@@ -479,13 +489,80 @@ The `ai-service/` microservice provides deep learning inference and combinatoria
   7. `BIOMEDICAL` (Bandages, syringes, medical waste)
   8. `HAZARDOUS` (Paints, chemical containers, aerosol cans)
   9. `NON_RECYCLABLE_RESIDUAL` (Sanitary waste, mixed contaminated trash)
-* **Confidence Calibration:** If the maximum softmax probability falls below $0.45$, the model triggers an `UNCERTAIN` classification and prompts human confirmation or guidance.
+* **Confidence Calibration:** If the maximum softmax probability falls below $0.45$, the model flags an `UNCERTAIN` classification and prompts human verification or guidance.
 
-### Route Optimization (Google OR-Tools)
-* **Algorithm:** Capacitated Vehicle Routing Problem (CVRP) with Distance Matrix evaluation.
-* **Objective:** Minimize total fleet fuel consumption and travel distance across Srinagar while guaranteeing no collection vehicle exceeds its maximum capacity (e.g., $3,500\text{ kg}$).
+### 8.2 Microservice API Endpoints
+
+| Endpoint | Method | Auth | Description |
+|---|---|---|---|
+| `/health` | `GET` | Optional API Key | Service liveness, status (`ready`), model loaded state |
+| `/model-info` | `GET` | Optional API Key | Model architecture, input shape, classes list, and version |
+| `/version` | `GET` | Optional API Key | Service version, model version, and framework versions |
+| `/classify` | `POST` | Optional API Key | Multi-part image upload classification (5MB limit, PIL verification) |
+| `/evaluate` | `GET` | Optional API Key | Latest test set evaluation metrics (accuracy, loss) |
+| `/optimize-route` | `POST` | Optional API Key | Google OR-Tools CVRP dynamic route optimization |
+
+### 8.3 Independent Deployment Options
+
+The AI service can be deployed independently from the Node.js backend and React frontend:
+
+#### Option A: Docker Container (Recommended for Production)
+```bash
+cd ai-service
+
+# Build production container image
+docker build -t ecocycle-ai-service:latest .
+
+# Run container with resource limits and health check
+docker run -d \
+  --name ecocycle-ai \
+  -p 8000:8000 \
+  -e PORT=8000 \
+  -e AI_SERVICE_API_KEY="your-production-secret-key" \
+  --memory="1g" \
+  --cpus="1.0" \
+  --restart unless-stopped \
+  ecocycle-ai-service:latest
+```
+
+#### Option B: Standalone Python Process
+```bash
+cd ai-service
+python -m venv venv
+# Windows: .\venv\Scripts\activate | Linux: source venv/bin/activate
+pip install -r requirements.txt
+uvicorn src.main:app --host 0.0.0.0 --port 8000 --workers 2
+```
+
+#### Option C: Cloud Platform Deployment (Cloud Run / Railway / Fly.io / ECS)
+Because `ai-service` includes a self-contained `Dockerfile` with multi-stage build, healthcheck, and an optimized `.dockerignore` (excluding heavy datasets and zip archives), it can be deployed directly to:
+* **Google Cloud Run:** Fully managed serverless container scaling to zero.
+* **Railway / Render:** Connect Git repository with root directory set to `ai-service/`.
+* **Fly.io:** Deploy using `fly launch` in `ai-service/`.
+
+### 8.4 Integration with Node.js Backend
+
+The Node.js backend communicates with the AI microservice via HTTP REST. Configure `backend/.env`:
+```ini
+# AI Microservice URL (point to container, local port, or cloud URL)
+AI_SERVICE_URL=http://127.0.0.1:8000
+
+# Optional API key protection (sent via X-API-Key header)
+AI_SERVICE_API_KEY=your-production-secret-key
+```
+
+If the AI microservice is temporarily unreachable or offline, the Node.js backend degrades gracefully with heuristic classification fallback and informative warning logs.
+
+### 8.5 Model Training & Retraining Pipeline
+
+Training and inference are strictly decoupled:
+* **Training Script:** `ai-service/train_9class.py` trains MobileNetV3-Small over raw dataset folders (`data/garbage_classification/`).
+* **Evaluation Script:** `ai-service/evaluate_model.py` generates test-set accuracy, class-by-class precision/recall, and confusion matrices.
+* **Model Artifacts:** Successful training writes `ai-service/models/waste_model.pt` and `waste_model_metadata.json`.
+* **Zero Downtime Updates:** Updating the model in production requires only swapping `waste_model.pt` and restarting the container or worker process.
 
 ---
+
 
 ## 9. IoT Hardware & Embedded Firmware
 
