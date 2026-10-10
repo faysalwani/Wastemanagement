@@ -46,6 +46,21 @@ if (process.env.NODE_ENV === 'development') {
 const uploadDir = path.join(__dirname, '..', process.env.UPLOAD_DIR || 'uploads');
 app.use('/uploads', express.static(uploadDir));
 
+// Root API Gateway Welcome & Status
+app.get('/', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'EcoCycle Srinagar — Smart Waste Management Platform Gateway Online',
+    version: '1.0.0',
+    endpoints: {
+      health: '/api/v1/health',
+      apiRoot: '/api/v1',
+      documentation: '/api-docs',
+    },
+    clientUrl: process.env.CLIENT_URL || 'http://localhost:5173'
+  });
+});
+
 // System Health Check Endpoint
 app.get('/api/v1/health', (req, res) => {
   res.status(200).json({

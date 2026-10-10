@@ -17,6 +17,13 @@ describe('System Health & Scaffolding Test', () => {
     expect(res.body.features.iotSmartBins).toBe('Active');
   });
 
+  it('GET / should return 200 OK with gateway status', async () => {
+    const res = await request(app).get('/');
+    expect(res.statusCode).toEqual(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.message).toContain('EcoCycle Srinagar');
+  });
+
   it('GET /api/v1 should return API Gateway welcome and docs paths', async () => {
     const res = await request(app).get('/api/v1');
     expect(res.statusCode).toEqual(200);
