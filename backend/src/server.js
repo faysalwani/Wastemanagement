@@ -50,7 +50,7 @@ app.use('/uploads', express.static(uploadDir));
 app.get('/', (req, res) => {
   res.status(200).json({
     success: true,
-    message: 'EcoCycle Srinagar — Smart Waste Management Platform Gateway Online',
+    message: 'Clear Waste — Smarter waste. Cleaner communities. Platform Gateway Online',
     version: '1.0.0',
     endpoints: {
       health: '/api/v1/health',

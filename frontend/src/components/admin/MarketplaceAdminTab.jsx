@@ -65,7 +65,7 @@ export default function MarketplaceAdminTab() {
     ecoCreditPrice: 100,
     stock: 50,
     status: 'ACTIVE',
-    vendor: 'EcoCycle Municipal Cooperative',
+    vendor: 'Clear Waste Community Partner',
     imageUrl: '',
   });
 
@@ -167,7 +167,7 @@ export default function MarketplaceAdminTab() {
       ecoCreditPrice: 100,
       stock: 50,
       status: 'ACTIVE',
-      vendor: 'EcoCycle Municipal Cooperative',
+      vendor: 'Clear Waste Community Partner',
       imageUrl: '',
     });
     setIsProductModalOpen(true);
@@ -183,7 +183,7 @@ export default function MarketplaceAdminTab() {
       ecoCreditPrice: p.ecoCreditPrice,
       stock: p.stock,
       status: p.status,
-      vendor: p.vendor || 'EcoCycle Municipal Cooperative',
+      vendor: p.vendor || 'Clear Waste Community Partner',
       imageUrl: p.images && p.images[0] ? p.images[0] : '',
     });
     setIsProductModalOpen(true);
@@ -223,7 +223,7 @@ export default function MarketplaceAdminTab() {
         <div>
           <h3 className="font-extrabold text-base text-slate-900 flex items-center gap-2">
             <ShoppingBag className="w-5 h-5 text-emerald-600" />
-            <span>EcoCycle Rewards Store & Order Redemptions</span>
+            <span>Clear Waste Rewards Store & Order Redemptions</span>
           </h3>
           <p className="text-xs text-slate-500 mt-0.5">
             Manage sustainable hardware catalog, inventory stocks, and fulfill citizen redemptions.
@@ -589,7 +589,7 @@ export default function MarketplaceAdminTab() {
                   type="text"
                   value={productForm.vendor}
                   onChange={(e) => setProductForm({ ...productForm, vendor: e.target.value })}
-                  placeholder="EcoCycle Municipal Cooperative"
+                  placeholder="Clear Waste Community Partner"
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none focus:border-emerald-500"
                 />
               </div>

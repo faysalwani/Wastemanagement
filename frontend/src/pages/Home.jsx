@@ -1,182 +1,224 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  Camera, 
-  Repeat, 
-  Sprout, 
-  Truck, 
-  AlertTriangle, 
-  Cpu, 
-  ShieldCheck, 
+import {
+  Camera,
+  Truck,
+  MapPin,
+  Recycle,
+  Gift,
   ArrowRight,
-  TrendingUp,
-  Sparkles,
-  MapPin
+  Repeat,
+  Sprout,
+  Trash2,
+  Award,
+  ScanLine,
 } from 'lucide-react';
-import api from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 export default function Home() {
-  const [backendHealth, setBackendHealth] = useState(null);
+  const { user, isAuthenticated } = useAuth() || {};
 
-  useEffect(() => {
-    api.get('/health')
-      .then((res) => setBackendHealth(res.data))
-      .catch(() => setBackendHealth({ status: 'OFFLINE' }));
-  }, []);
-
-  const featureCards = [
+  const primaryCards = [
     {
-      title: 'AI Waste Classifier',
-      desc: 'Instant visual classification with MobileNetV3 and waste-to-action routing.',
-      icon: Camera,
-      link: '/scan',
-      color: 'from-emerald-500 to-teal-600',
-      badge: 'Computer Vision'
-    },
-    {
-      title: 'P2P Resource Exchange',
-      desc: 'Route organic waste to home composters and swap reusable materials.',
-      icon: Repeat,
-      link: '/exchange',
-      color: 'from-blue-500 to-indigo-600',
-      badge: 'Circular Economy'
-    },
-    {
-      title: 'Composting Assistant',
-      desc: 'Scientific carbon-nitrogen ratios, aeration, and household guides.',
-      icon: Sprout,
-      link: '/compost',
-      color: 'from-lime-500 to-emerald-600',
-      badge: 'Organic Recovery'
-    },
-    {
-      title: 'Smart Bins & Telematics',
-      desc: 'Ultrasonic fill percentage, load-cell weight, and temperature alerts.',
-      icon: Cpu,
-      link: '/smart-bins',
-      color: 'from-violet-500 to-purple-600',
-      badge: 'ESP32 IoT'
-    },
-    {
-      title: 'Collection & Radar',
-      desc: 'Scheduled pickups, VRP route optimization, and 500m truck proximity alerts.',
+      title: 'Request a pickup',
+      desc: 'Arrange waste collection or check your local schedule.',
       icon: Truck,
       link: '/collection',
-      color: 'from-amber-500 to-orange-600',
-      badge: 'Real-Time Radar'
     },
     {
-      title: 'Open Dumping Reports',
-      desc: 'Geotagged citizen complaints with spatial clustering hotspot GIS.',
-      icon: AlertTriangle,
+      title: 'Report dumping',
+      desc: 'Help keep public spaces and neighbourhoods clean.',
+      icon: MapPin,
       link: '/reports',
-      color: 'from-rose-500 to-pink-600',
-      badge: 'GIS Hotspots'
+    },
+    {
+      title: 'Reuse and recycle',
+      desc: 'Share reusable items, compost organics or find recyclers.',
+      icon: Recycle,
+      link: '/exchange',
+    },
+    {
+      title: 'My rewards',
+      desc: 'View your points balance and redeem useful household items.',
+      icon: Gift,
+      link: '/marketplace',
+    },
+  ];
+
+  const reuseOptions = [
+    {
+      title: 'Share & Reuse Items',
+      desc: 'Pass on clean boxes, jars or reusable materials to neighbours.',
+      icon: Repeat,
+      link: '/exchange',
+    },
+    {
+      title: 'Compost at Home',
+      desc: 'Simple step-by-step guidance to turn kitchen scraps into compost.',
+      icon: Sprout,
+      link: '/compost',
+    },
+    {
+      title: 'Find Recycling Centres',
+      desc: 'Locate verified drop-off points for paper, plastic, metal and e-waste.',
+      icon: Recycle,
+      link: '/recyclers',
+    },
+    {
+      title: 'Public Smart Bins',
+      desc: 'Check fill levels of community bins in your area before visiting.',
+      icon: Trash2,
+      link: '/smart-bins',
     },
   ];
 
   return (
-    <div className="space-y-16 pb-20">
-      {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-eco-50/70 via-white to-slate-50 pt-16 pb-24 border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-eco-100 border border-eco-200 text-eco-800 text-xs font-semibold uppercase tracking-wider mb-6 animate-pulse">
-            <Sparkles className="w-3.5 h-3.5 text-eco-600" />
-            M.Sc. AI & ML Major Project • NDU Srinagar
-          </div>
-
-          <h1 className="text-4xl sm:text-6xl font-extrabold text-slate-900 tracking-tight leading-tight sm:leading-none max-w-4xl mx-auto">
-            An IoT-Based Intelligent Waste Management & <span className="bg-gradient-to-r from-eco-600 to-teal-600 bg-clip-text text-transparent">Resource Recovery</span> Platform
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 space-y-12">
+      {/* Main Hero & Primary Task Section */}
+      <section className="space-y-6">
+        <div className="space-y-2">
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-[#26372B] tracking-tight">
+            A cleaner community starts with you.
           </h1>
-
-          <p className="mt-6 text-lg text-slate-600 max-w-2xl mx-auto font-normal leading-relaxed">
-            Bridging citizens, collection services, smart bins, and recyclers into a unified circular economy coordination network.
+          <p className="text-base sm:text-lg text-[#526356] max-w-2xl">
+            Find the right way to reuse, recycle or dispose of your waste.
           </p>
+        </div>
 
-          {/* Philosophy Banner */}
-          <div className="mt-10 max-w-3xl mx-auto p-4 rounded-2xl bg-white border border-slate-200 shadow-sm">
-            <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Core Philosophy</div>
-            <div className="flex flex-wrap items-center justify-center gap-2 text-xs sm:text-sm font-semibold text-slate-700">
-              <span className="px-2.5 py-1 rounded-md bg-emerald-100 text-emerald-800">Generate Less</span>
-              <span>→</span>
-              <span className="px-2.5 py-1 rounded-md bg-blue-100 text-blue-800">Reuse</span>
-              <span>→</span>
-              <span className="px-2.5 py-1 rounded-md bg-lime-100 text-lime-800">Compost</span>
-              <span>→</span>
-              <span className="px-2.5 py-1 rounded-md bg-amber-100 text-amber-800">Recycle</span>
-              <span>→</span>
-              <span className="px-2.5 py-1 rounded-md bg-indigo-100 text-indigo-800">Collect</span>
-              <span>→</span>
-              <span className="px-2.5 py-1 rounded-md bg-slate-100 text-slate-700">Dispose Remaining</span>
+        {/* Primary Full-Width CTA: Scan Your Waste */}
+        <Link
+          to="/scan"
+          className="group block w-full rounded-2xl bg-[#21834A] hover:bg-[#1B6E3E] text-white p-6 sm:p-7 shadow-sm transition-colors"
+        >
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-white/15 flex items-center justify-center flex-shrink-0">
+                <ScanLine className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h2 className="text-xl sm:text-2xl font-bold text-white">
+                  Scan your waste
+                </h2>
+                <p className="text-sm sm:text-base text-white/90 mt-0.5">
+                  Take a photo to discover what to do next.
+                </p>
+              </div>
             </div>
+            <ArrowRight className="w-6 h-6 text-white flex-shrink-0 group-hover:translate-x-1 transition-transform" />
           </div>
+        </Link>
 
-          {/* CTA Buttons */}
-          <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
-            <Link
-              to="/scan"
-              className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-eco-600 hover:bg-eco-700 text-white font-semibold text-sm shadow-lg shadow-eco-600/30 hover:scale-[1.02] transition-all"
-            >
-              <Camera className="w-5 h-5" />
-              Scan Waste with AI
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-            <Link
-              to="/smart-bins"
-              className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-white hover:bg-slate-100 text-slate-800 font-semibold text-sm border border-slate-300 shadow-xs hover:scale-[1.02] transition-all"
-            >
-              <Cpu className="w-5 h-5 text-eco-600" />
-              Monitor Smart Bins
-            </Link>
-          </div>
-
-          {/* Backend Health Pill */}
-          <div className="mt-8 inline-flex items-center gap-2 text-xs text-slate-500">
-            <span className={`w-2 h-2 rounded-full ${backendHealth?.status === 'HEALTHY' ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
-            Backend API: <span className="font-semibold">{backendHealth?.status || 'Checking...'}</span> ({backendHealth?.version || 'v1.0.0'})
-          </div>
-        </div>
-      </section>
-
-      {/* Feature Grid */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12">
-          <h2 className="text-2xl sm:text-3xl font-bold text-slate-900">
-            Unified Circular Waste Ecosystem
-          </h2>
-          <p className="text-sm text-slate-600 mt-2">
-            Engineered specifically for the geographical and community dynamics of Srinagar.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {featureCards.map((card) => {
+        {/* 2x2 Primary Action Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+          {primaryCards.map((card) => {
             const Icon = card.icon;
             return (
               <Link
                 key={card.title}
                 to={card.link}
-                className="group relative p-6 bg-white rounded-2xl border border-slate-200 shadow-xs hover:shadow-xl hover:border-slate-300 transition-all hover:-translate-y-1 overflow-hidden flex flex-col justify-between"
+                className="group p-6 rounded-2xl bg-white border border-[#DCE6DF] hover:border-[#21834A] shadow-2xs hover:shadow-md transition-all flex flex-col justify-between gap-4"
               >
+                <div className="w-10 h-10 rounded-xl bg-[#E5F4E8] text-[#21834A] flex items-center justify-center">
+                  <Icon className="w-5 h-5" />
+                </div>
                 <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-tr ${card.color} flex items-center justify-center text-white shadow-md group-hover:scale-110 transition-transform`}>
-                      <Icon className="w-6 h-6" />
-                    </div>
-                    <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700">
-                      {card.badge}
-                    </span>
-                  </div>
-                  <h3 className="text-lg font-bold text-slate-900 group-hover:text-eco-600 transition-colors">
+                  <h3 className="text-lg font-bold text-[#26372B] group-hover:text-[#21834A] transition-colors">
                     {card.title}
                   </h3>
-                  <p className="mt-2 text-xs text-slate-600 leading-relaxed">
+                  <p className="text-sm text-[#526356] mt-1 leading-relaxed">
                     {card.desc}
                   </p>
                 </div>
+              </Link>
+            );
+          })}
+        </div>
+      </section>
 
-                <div className="mt-6 flex items-center gap-1 text-xs font-bold text-eco-600 group-hover:translate-x-1 transition-transform">
-                  Explore Module <ArrowRight className="w-3.5 h-3.5" />
+      {/* Personalized Bar for Signed-In Users or Simple Account Prompt for Guests */}
+      {isAuthenticated ? (
+        <section className="p-6 rounded-2xl bg-white border border-[#DCE6DF] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-[#E5F4E8] text-[#21834A] flex items-center justify-center flex-shrink-0">
+              <Award className="w-6 h-6" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-[#26372B]">
+                Welcome back, {user?.name?.split(' ')[0] || 'Citizen'}
+              </h2>
+              <p className="text-sm text-[#526356]">
+                You currently have{' '}
+                <strong className="text-[#21834A]">{user?.ecoCredits || 0} reward points</strong>
+                {user?.wardName ? ` • Area: ${user.wardName}` : ''}.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <Link
+              to="/citizen"
+              className="px-4 py-2.5 rounded-xl bg-[#21834A] hover:bg-[#1B6E3E] text-white text-sm font-semibold transition-colors"
+            >
+              Go to My Dashboard
+            </Link>
+          </div>
+        </section>
+      ) : (
+        <section className="p-6 rounded-2xl bg-[#E5F4E8]/70 border border-[#C5E6CD] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-base font-bold text-[#26372B]">
+              Track your pickups and earn community rewards
+            </h2>
+            <p className="text-sm text-[#526356] mt-0.5">
+              Create a free citizen account to request doorstep collection, report dumping and earn points.
+            </p>
+          </div>
+          <div className="flex items-center gap-3 flex-shrink-0">
+            <Link
+              to="/register"
+              className="px-5 py-2.5 rounded-xl bg-[#21834A] hover:bg-[#1B6E3E] text-white text-sm font-semibold transition-colors"
+            >
+              Create Account
+            </Link>
+            <Link
+              to="/login"
+              className="px-4 py-2.5 rounded-xl bg-white hover:bg-[#F8FAF8] text-[#26372B] border border-[#DCE6DF] text-sm font-semibold transition-colors"
+            >
+              Sign In
+            </Link>
+          </div>
+        </section>
+      )}
+
+      {/* Secondary Section: More Ways to Reuse & Recycle */}
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-xl font-bold text-[#26372B]">
+            Reuse, compost and recycle locally
+          </h2>
+          <p className="text-sm text-[#526356]">
+            Practical options to keep useful materials out of landfills.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {reuseOptions.map((item) => {
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.title}
+                to={item.link}
+                className="group p-5 rounded-2xl bg-white border border-[#DCE6DF] hover:border-[#21834A] transition-all flex flex-col justify-between gap-3"
+              >
+                <div className="w-9 h-9 rounded-lg bg-[#E5F4E8] text-[#21834A] flex items-center justify-center">
+                  <Icon className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-[#26372B] group-hover:text-[#21834A]">
+                    {item.title}
+                  </h3>
+                  <p className="text-xs text-[#526356] mt-1 leading-relaxed">
+                    {item.desc}
+                  </p>
                 </div>
               </Link>
             );

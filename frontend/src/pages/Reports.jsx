@@ -1,20 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Circle } from 'react-leaflet';
 import L from 'leaflet';
-import { 
-  AlertOctagon, 
-  Plus, 
-  MapPin, 
-  Calendar, 
-  CheckCircle, 
-  Clock, 
-  Upload, 
-  X, 
-  Filter,
-  Flame,
+import {
+  AlertTriangle,
+  Plus,
+  MapPin,
+  CheckCircle2,
   Award,
-  AlertTriangle
+  Camera,
+  Send,
+  Map,
+  ListChecks,
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
@@ -23,10 +21,10 @@ const createReportIcon = (severity) => {
     severity === 'CRITICAL'
       ? '#991b1b'
       : severity === 'HIGH'
-      ? '#ef4444'
+      ? '#dc2626'
       : severity === 'MEDIUM'
-      ? '#f59e0b'
-      : '#3b82f6';
+      ? '#d97706'
+      : '#21834A';
 
   return L.divIcon({
     className: 'custom-report-marker',
@@ -37,9 +35,6 @@ const createReportIcon = (severity) => {
       border-radius: 50%;
       border: 2px solid white;
       box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-      display: flex;
-      align-items: center;
-      justify-content: center;
     "></div>`,
     iconSize: [22, 22],
     iconAnchor: [11, 11],
@@ -59,16 +54,25 @@ const SRINAGAR_WARDS = [
   'Karan Nagar',
 ];
 
+const STATUS_BADGE = {
+  SUBMITTED: { label: 'Submitted', style: 'bg-amber-50 text-amber-800 border-amber-200' },
+  ASSIGNED: { label: 'Team Assigned', style: 'bg-sky-50 text-sky-800 border-sky-200' },
+  VERIFIED: { label: 'Verified', style: 'bg-sky-100 text-sky-900 border-sky-300' },
+  RESOLVED: { label: 'Resolved', style: 'bg-[#E5F4E8] text-[#1A693B] border-[#BCE0C6]' },
+  REJECTED: { label: 'Closed', style: 'bg-slate-100 text-slate-600 border-slate-200' },
+};
+
 export default function Reports() {
+  const { user, isAuthenticated } = useAuth() || {};
+
   const [reports, setReports] = useState([]);
   const [hotspots, setHotspots] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
   const [actionSuccess, setActionSuccess] = useState(null);
   const [actionError, setActionError] = useState(null);
 
-  // Subtab State: CITY_MAP or MY_SUBMISSIONS
-  const [subtab, setSubtab] = useState('CITY_MAP');
+  // Subtab State: REPORT_FORM, MY_SUBMISSIONS, COMMUNITY_MAP
+  const [subtab, setSubtab] = useState('REPORT_FORM');
   const [myReports, setMyReports] = useState([]);
   const [loadingMy, setLoadingMy] = useState(false);
 
@@ -78,7 +82,7 @@ export default function Reports() {
     severity: 'MEDIUM',
     description: '',
     address: '',
-    wardName: 'Lal Chowk',
+    wardName: user?.wardName || 'Lal Chowk',
     coordinates: [74.7973, 34.0837],
   });
   const [photoFile, setPhotoFile] = useState(null);
@@ -86,20 +90,18 @@ export default function Reports() {
   const [detectingGps, setDetectingGps] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const { user, isAuthenticated, refreshUser } = useAuth() || {};
-
   const fetchData = async () => {
     setLoading(true);
     try {
       const [repRes, hotRes] = await Promise.all([
-        api.get('/reports'),
-        api.get('/reports/hotspots'),
+        api.get('/reports').catch(() => ({ data: { success: false } })),
+        api.get('/reports/hotspots').catch(() => ({ data: { success: false } })),
       ]);
 
-      if (repRes.data.success) setReports(repRes.data.data);
-      if (hotRes.data.success) setHotspots(hotRes.data.data);
+      if (repRes.data?.success) setReports(repRes.data.data);
+      if (hotRes.data?.success) setHotspots(hotRes.data.data);
     } catch (err) {
-      console.error('Failed to fetch reports/hotspots:', err);
+      console.error('Failed to fetch dumping reports:', err);
     } finally {
       setLoading(false);
     }
@@ -110,11 +112,11 @@ export default function Reports() {
     setLoadingMy(true);
     try {
       const res = await api.get('/reports/my');
-      if (res.data.success) {
+      if (res.data?.success) {
         setMyReports(res.data.data);
       }
     } catch (err) {
-      console.error('Failed to fetch citizen dumping reports:', err);
+      console.error('Failed to fetch my reports:', err);
     } finally {
       setLoadingMy(false);
     }
@@ -127,10 +129,11 @@ export default function Reports() {
 
   const handleDetectGps = () => {
     if (!navigator.geolocation) {
-      setActionError('HTML5 Geolocation is not supported by your browser.');
+      setActionError('Location access is not supported by your browser.');
       return;
     }
     setDetectingGps(true);
+    setActionError(null);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setFormData((prev) => ({
@@ -143,7 +146,7 @@ export default function Reports() {
         setDetectingGps(false);
       },
       () => {
-        setActionError('Unable to retrieve current location.');
+        setActionError('Could not detect your current GPS coordinates. You can still enter the street address below.');
         setDetectingGps(false);
       },
       { timeout: 8000 }
@@ -152,8 +155,14 @@ export default function Reports() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!isAuthenticated) {
+      setActionError('Please sign in to submit a dumping report.');
+      return;
+    }
+
     setSubmitting(true);
     setActionError(null);
+    setActionSuccess(null);
 
     const data = new FormData();
     data.append('wasteCategory', formData.wasteCategory);
@@ -170,8 +179,7 @@ export default function Reports() {
       });
 
       if (res.data.success) {
-        setShowModal(false);
-        setActionSuccess('Illicit dumping complaint registered! Municipal team notified.');
+        setActionSuccess('Thank you! Your report has been submitted to the cleanup team.');
         setFormData({
           wasteCategory: 'MIXED_MUNICIPAL',
           severity: 'MEDIUM',
@@ -183,11 +191,11 @@ export default function Reports() {
         setPhotoFile(null);
         setPhotoPreview(null);
         fetchData();
-        setTimeout(() => setActionSuccess(null), 5000);
+        fetchMyReports();
       }
     } catch (err) {
       setActionError(
-        err.response?.data?.error?.message || 'Failed to submit dumping report.'
+        err.response?.data?.error?.message || 'Could not submit your report. Please try again.'
       );
     } finally {
       setSubmitting(false);
@@ -195,133 +203,433 @@ export default function Reports() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-10 space-y-8">
-      {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10 space-y-8">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold mb-2">
-            <AlertOctagon className="w-3.5 h-3.5 text-rose-600" />
-            Citizen GIS Reporting & Spatial Clustering
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
-            Illicit Open-Dumping & Hotspot Detection
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#26372B] tracking-tight">
+            Report Illegal Dumping
           </h1>
-          <p className="text-xs sm:text-sm text-slate-600 mt-1">
-            Report unauthorized waste dumps across Srinagar. Verified reports earn <strong className="text-emerald-700">+50 Eco-Credits</strong> upon municipal inspection.
+          <p className="text-sm sm:text-base text-[#526356] mt-1">
+            Help keep our streets clean. Verified reports earn{' '}
+            <strong className="text-[#21834A]">+50 reward points</strong> once inspected.
           </p>
         </div>
 
-        {isAuthenticated && (
+        {/* Navigation Tabs */}
+        <div
+          role="tablist"
+          aria-label="Dumping report views"
+          className="flex flex-wrap p-1.5 rounded-2xl bg-white border border-[#DCE6DF] text-xs sm:text-sm font-semibold gap-1 self-start"
+        >
           <button
-            onClick={() => {
-              setActionError(null);
-              setShowModal(true);
-            }}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow-md shadow-rose-600/20 transition-all self-start sm:self-auto"
+            type="button"
+            role="tab"
+            aria-selected={subtab === 'REPORT_FORM'}
+            onClick={() => setSubtab('REPORT_FORM')}
+            className={`px-3.5 py-2 rounded-xl transition-colors flex items-center gap-1.5 ${
+              subtab === 'REPORT_FORM'
+                ? 'bg-[#21834A] text-white shadow-xs'
+                : 'text-[#526356] hover:text-[#26372B] hover:bg-[#F8FAF8]'
+            }`}
           >
             <Plus className="w-4 h-4" />
-            <span>Report Dumping Site</span>
+            <span>Submit Report</span>
           </button>
-        )}
+
+          {isAuthenticated && (
+            <button
+              type="button"
+              role="tab"
+              aria-selected={subtab === 'MY_SUBMISSIONS'}
+              onClick={() => {
+                setSubtab('MY_SUBMISSIONS');
+                fetchMyReports();
+              }}
+              className={`px-3.5 py-2 rounded-xl transition-colors flex items-center gap-1.5 ${
+                subtab === 'MY_SUBMISSIONS'
+                  ? 'bg-[#21834A] text-white shadow-xs'
+                  : 'text-[#526356] hover:text-[#26372B] hover:bg-[#F8FAF8]'
+              }`}
+            >
+              <ListChecks className="w-4 h-4" />
+              <span>My Reports ({myReports.length})</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            role="tab"
+            aria-selected={subtab === 'COMMUNITY_MAP'}
+            onClick={() => setSubtab('COMMUNITY_MAP')}
+            className={`px-3.5 py-2 rounded-xl transition-colors flex items-center gap-1.5 ${
+              subtab === 'COMMUNITY_MAP'
+                ? 'bg-[#21834A] text-white shadow-xs'
+                : 'text-[#526356] hover:text-[#26372B] hover:bg-[#F8FAF8]'
+            }`}
+          >
+            <Map className="w-4 h-4" />
+            <span>Community Map ({reports.length})</span>
+          </button>
+        </div>
       </div>
 
-      {actionSuccess && (
-        <div className="flex items-center gap-2 p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800">
-          <CheckCircle className="w-4 h-4 flex-shrink-0" />
-          <span>{actionSuccess}</span>
+      {/* VIEW 1: STEP-BY-STEP REPORT FORM */}
+      {subtab === 'REPORT_FORM' && (
+        <div className="max-w-2xl bg-white p-6 sm:p-8 rounded-3xl border border-[#DCE6DF] shadow-xs space-y-6">
+          <div className="pb-4 border-b border-[#DCE6DF]">
+            <h2 className="text-lg sm:text-xl font-bold text-[#26372B]">
+              Report an Uncollected Waste Pile or Dumping Site
+            </h2>
+            <p className="text-sm text-[#526356] mt-1">
+              Provide the location and a brief description so our cleanup crew can find and clear it.
+            </p>
+          </div>
+
+          {!isAuthenticated && (
+            <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-sm text-amber-900 flex items-center justify-between gap-4">
+              <span>Please sign in to submit a report and earn reward points.</span>
+              <Link
+                to="/login"
+                className="px-4 py-2 rounded-xl bg-[#21834A] text-white text-xs font-bold whitespace-nowrap hover:bg-[#1A693B]"
+              >
+                Sign In
+              </Link>
+            </div>
+          )}
+
+          {actionSuccess && (
+            <div
+              role="status"
+              className="flex items-center justify-between gap-3 p-4 rounded-2xl bg-[#E5F4E8] border border-[#BCE0C6] text-sm font-medium text-[#1A693B]"
+            >
+              <div className="flex items-center gap-2.5">
+                <CheckCircle2 className="w-5 h-5 text-[#21834A] flex-shrink-0" />
+                <span>{actionSuccess}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSubtab('MY_SUBMISSIONS')}
+                className="text-xs font-bold underline whitespace-nowrap"
+              >
+                View my reports
+              </button>
+            </div>
+          )}
+
+          {actionError && (
+            <div
+              role="alert"
+              className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-sm text-rose-900"
+            >
+              {actionError}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Step 1: Location */}
+            <div className="space-y-4">
+              <div className="text-xs font-bold uppercase tracking-wider text-[#21834A]">
+                1. Where is the waste located?
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="report-ward" className="block text-sm font-semibold text-[#26372B] mb-1.5">
+                    Neighborhood / Ward
+                  </label>
+                  <select
+                    id="report-ward"
+                    value={formData.wardName}
+                    onChange={(e) => setFormData({ ...formData, wardName: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#DCE6DF] text-sm text-[#26372B] bg-white focus:outline-none focus:border-[#21834A]"
+                  >
+                    {SRINAGAR_WARDS.map((w) => (
+                      <option key={w} value={w}>
+                        {w}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label htmlFor="report-address" className="block text-sm font-semibold text-[#26372B] mb-1.5">
+                    Street or nearby landmark
+                  </label>
+                  <input
+                    id="report-address"
+                    type="text"
+                    required
+                    placeholder="e.g. Near main market entrance"
+                    value={formData.address}
+                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#DCE6DF] text-sm text-[#26372B] bg-white focus:outline-none focus:border-[#21834A]"
+                  />
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-[#F8FAF8] border border-[#DCE6DF] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="text-xs sm:text-sm text-[#526356] flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-[#21834A] flex-shrink-0" />
+                  <span>
+                    GPS pin: <strong>{formData.coordinates[1]}° N</strong>,{' '}
+                    <strong>{formData.coordinates[0]}° E</strong>
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleDetectGps}
+                  disabled={detectingGps}
+                  className="px-3.5 py-2 rounded-xl bg-white border border-[#DCE6DF] text-xs font-bold text-[#26372B] hover:bg-[#E5F4E8]/50 disabled:opacity-50 self-start sm:self-auto"
+                >
+                  {detectingGps ? 'Detecting location...' : 'Use My Current Location'}
+                </button>
+              </div>
+            </div>
+
+            {/* Step 2: Issue Type & Urgency */}
+            <div className="space-y-4 pt-2 border-t border-[#DCE6DF]">
+              <div className="text-xs font-bold uppercase tracking-wider text-[#21834A]">
+                2. What kind of issue is it?
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="report-category" className="block text-sm font-semibold text-[#26372B] mb-1.5">
+                    Type of waste
+                  </label>
+                  <select
+                    id="report-category"
+                    value={formData.wasteCategory}
+                    onChange={(e) => setFormData({ ...formData, wasteCategory: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#DCE6DF] text-sm text-[#26372B] bg-white focus:outline-none focus:border-[#21834A]"
+                  >
+                    <option value="MIXED_MUNICIPAL">Mixed Household Rubbish</option>
+                    <option value="PLASTIC_POLLUTION">Plastic Bags & Bottles</option>
+                    <option value="CONSTRUCTION_DEBRIS">Construction Rubble / Debris</option>
+                    <option value="BIO_ORGANIC">Rotting Food or Garden Waste</option>
+                    <option value="HAZARDOUS_MEDICAL">Hazardous or Medical Waste</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label htmlFor="report-severity" className="block text-sm font-semibold text-[#26372B] mb-1.5">
+                    Urgency level
+                  </label>
+                  <select
+                    id="report-severity"
+                    value={formData.severity}
+                    onChange={(e) => setFormData({ ...formData, severity: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#DCE6DF] text-sm text-[#26372B] bg-white focus:outline-none focus:border-[#21834A]"
+                  >
+                    <option value="LOW">Low — Small roadside litter</option>
+                    <option value="MEDIUM">Medium — Noticeable waste pile</option>
+                    <option value="HIGH">High — Blocking road or drain</option>
+                    <option value="CRITICAL">Urgent — Near water body or school</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="report-description" className="block text-sm font-semibold text-[#26372B] mb-1.5">
+                  Brief description
+                </label>
+                <textarea
+                  id="report-description"
+                  rows={2}
+                  required
+                  placeholder="Describe the issue briefly so the cleanup team knows what to bring..."
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#DCE6DF] text-sm text-[#26372B] bg-white focus:outline-none focus:border-[#21834A]"
+                />
+              </div>
+            </div>
+
+            {/* Step 3: Photo */}
+            <div className="space-y-3 pt-2 border-t border-[#DCE6DF]">
+              <label htmlFor="report-photo" className="block text-sm font-semibold text-[#26372B]">
+                3. Add a photo (optional)
+              </label>
+              <div className="flex items-center gap-4">
+                <input
+                  id="report-photo"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    setPhotoFile(file || null);
+                    setPhotoPreview(file ? URL.createObjectURL(file) : null);
+                  }}
+                  className="w-full text-xs sm:text-sm text-[#526356] file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-[#E5F4E8] file:text-[#1A693B] hover:file:bg-[#d4ebd9]"
+                />
+              </div>
+              {photoPreview && (
+                <img
+                  src={photoPreview}
+                  alt="Selected site preview"
+                  className="h-32 w-auto rounded-xl border border-[#DCE6DF] object-cover"
+                />
+              )}
+            </div>
+
+            <button
+              type="submit"
+              disabled={submitting || !isAuthenticated}
+              className="w-full py-3.5 px-5 rounded-xl bg-[#21834A] hover:bg-[#1A693B] text-white text-sm font-bold shadow-xs transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              <Send className="w-4 h-4" />
+              <span>{submitting ? 'Submitting report...' : 'Submit Report'}</span>
+            </button>
+          </form>
         </div>
       )}
 
-      {/* Subtab Toggle Navigation */}
-      <div className="flex items-center gap-2 border-b border-slate-200 pb-1">
-        <button
-          onClick={() => setSubtab('CITY_MAP')}
-          className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 ${
-            subtab === 'CITY_MAP'
-              ? 'bg-slate-900 text-white shadow-xs'
-              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-          }`}
-        >
-          <Flame className="w-4 h-4 text-rose-500" />
-          <span>City Map & Hotspots ({reports.length})</span>
-        </button>
-
-        {isAuthenticated && (
-          <button
-            onClick={() => {
-              setSubtab('MY_SUBMISSIONS');
-              fetchMyReports();
-            }}
-            className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 ${
-              subtab === 'MY_SUBMISSIONS'
-                ? 'bg-slate-900 text-white shadow-xs'
-                : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-            }`}
-          >
-            <CheckCircle className="w-4 h-4 text-emerald-500" />
-            <span>My Submissions ({myReports.length})</span>
-          </button>
-        )}
-      </div>
-
-      {/* VIEW 1: CITY MAP & HOTSPOTS */}
-      {subtab === 'CITY_MAP' && (
-        <div className="space-y-8">
-          {/* KPI Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div className="p-5 rounded-3xl bg-white border border-slate-200 shadow-xs">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Reports</span>
-              <div className="text-3xl font-extrabold text-slate-900 mt-2">{reports.length}</div>
-              <span className="text-[11px] text-slate-500">Citizen submissions</span>
+      {/* VIEW 2: MY SUBMISSIONS */}
+      {subtab === 'MY_SUBMISSIONS' && (
+        <div className="space-y-4">
+          <div className="p-5 rounded-2xl bg-white border border-[#DCE6DF] flex items-center justify-between">
+            <div>
+              <h2 className="font-bold text-base text-[#26372B]">My Submitted Reports</h2>
+              <p className="text-xs sm:text-sm text-[#526356]">
+                Track cleanup progress. You receive +50 reward points when a report is verified.
+              </p>
             </div>
+            <button
+              type="button"
+              onClick={() => setSubtab('REPORT_FORM')}
+              className="px-4 py-2 rounded-xl bg-[#21834A] text-white text-xs sm:text-sm font-bold hover:bg-[#1A693B]"
+            >
+              New Report
+            </button>
+          </div>
 
-            <div className="p-5 rounded-3xl bg-rose-50 border border-rose-200 shadow-xs">
-              <span className="text-xs font-bold text-rose-800 uppercase tracking-wider">Detected Hotspots</span>
-              <div className="text-3xl font-extrabold text-rose-950 mt-2">{hotspots.length}</div>
-              <span className="text-[11px] text-rose-700">Recurring 250m spatial clusters</span>
+          {loadingMy ? (
+            <div className="py-16 text-center text-sm text-[#526356] bg-white rounded-2xl border border-[#DCE6DF]">
+              Loading your submitted reports...
             </div>
+          ) : myReports.length === 0 ? (
+            <div className="p-12 rounded-2xl bg-white border border-[#DCE6DF] text-center space-y-3">
+              <AlertTriangle className="w-10 h-10 text-[#526356]/50 mx-auto" />
+              <h3 className="text-base font-bold text-[#26372B]">No reports submitted yet</h3>
+              <p className="text-sm text-[#526356] max-w-md mx-auto">
+                Spot an uncollected waste pile in your neighborhood? Report it to help our cleanup teams respond faster.
+              </p>
+              <button
+                type="button"
+                onClick={() => setSubtab('REPORT_FORM')}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#21834A] text-white text-sm font-bold hover:bg-[#1A693B]"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Report Dumping</span>
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {myReports.map((item) => {
+                const badge = STATUS_BADGE[item.status] || {
+                  label: item.status,
+                  style: 'bg-slate-100 text-slate-700 border-slate-200',
+                };
+                return (
+                  <div
+                    key={item._id}
+                    className="bg-white rounded-2xl border border-[#DCE6DF] p-5 flex flex-col justify-between space-y-4"
+                  >
+                    <div className="space-y-2.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-bold text-[#26372B] flex items-center gap-1">
+                          <MapPin className="w-3.5 h-3.5 text-[#21834A]" />
+                          {item.wardName}
+                        </span>
+                        <span
+                          className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${badge.style}`}
+                        >
+                          {badge.label}
+                        </span>
+                      </div>
 
-            <div className="p-5 rounded-3xl bg-amber-50 border border-amber-200 shadow-xs">
-              <span className="text-xs font-bold text-amber-800 uppercase tracking-wider">Pending Action</span>
-              <div className="text-3xl font-extrabold text-amber-950 mt-2">
-                {reports.filter((r) => r.status === 'SUBMITTED' || r.status === 'ASSIGNED').length}
+                      <div className="text-xs text-[#526356] font-medium">{item.address}</div>
+
+                      <p className="text-sm text-[#26372B] leading-relaxed">{item.description}</p>
+
+                      <div className="pt-2 border-t border-[#DCE6DF] flex items-center justify-between text-xs text-[#526356]">
+                        <span>{(item.wasteCategory || 'MIXED').replace(/_/g, ' ')}</span>
+                        <span>{new Date(item.createdAt).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      {item.status === 'VERIFIED' || item.status === 'RESOLVED' ? (
+                        <div className="p-2.5 rounded-xl bg-[#E5F4E8] text-[#1A693B] text-xs text-center font-bold flex items-center justify-center gap-1.5">
+                          <Award className="w-4 h-4 text-[#21834A]" />
+                          <span>Verified • +50 Points Earned</span>
+                        </div>
+                      ) : item.status === 'REJECTED' ? (
+                        <div className="p-2.5 rounded-xl bg-slate-100 text-slate-600 text-xs text-center font-medium">
+                          Closed by review team
+                        </div>
+                      ) : (
+                        <div className="p-2.5 rounded-xl bg-amber-50 text-amber-800 text-xs text-center font-medium">
+                          Awaiting cleanup inspection
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* VIEW 3: COMMUNITY MAP */}
+      {subtab === 'COMMUNITY_MAP' && (
+        <div className="space-y-6">
+          {/* Simple Summary Row */}
+          <div className="grid grid-cols-3 gap-4">
+            <div className="p-4 sm:p-5 rounded-2xl bg-white border border-[#DCE6DF]">
+              <span className="text-xs font-semibold text-[#526356]">Total Reports</span>
+              <div className="text-2xl sm:text-3xl font-extrabold text-[#26372B] mt-1">
+                {reports.length}
               </div>
-              <span className="text-[11px] text-amber-700">Scheduled for cleanup</span>
             </div>
 
-            <div className="p-5 rounded-3xl bg-emerald-50 border border-emerald-200 shadow-xs">
-              <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider">Resolved Sites</span>
-              <div className="text-3xl font-extrabold text-emerald-950 mt-2">
+            <div className="p-4 sm:p-5 rounded-2xl bg-white border border-[#DCE6DF]">
+              <span className="text-xs font-semibold text-[#526356]">In Progress</span>
+              <div className="text-2xl sm:text-3xl font-extrabold text-amber-700 mt-1">
+                {reports.filter((r) => r.status !== 'RESOLVED' && r.status !== 'REJECTED').length}
+              </div>
+            </div>
+
+            <div className="p-4 sm:p-5 rounded-2xl bg-[#E5F4E8]/60 border border-[#BCE0C6]">
+              <span className="text-xs font-semibold text-[#1A693B]">Cleaned Up</span>
+              <div className="text-2xl sm:text-3xl font-extrabold text-[#21834A] mt-1">
                 {reports.filter((r) => r.status === 'RESOLVED').length}
               </div>
-              <span className="text-[11px] text-emerald-700">Cleared & verified</span>
             </div>
           </div>
 
-          {/* Interactive GIS Map */}
-          <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-xs space-y-4">
-            <div className="flex items-center justify-between px-2">
-              <h2 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                <Flame className="w-4 h-4 text-rose-600" />
-                <span>Srinagar Open-Dumping Complaints & 250m Hotspot Clusters</span>
+          {/* Map */}
+          <div className="bg-white p-4 rounded-2xl border border-[#DCE6DF] space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+              <h2 className="text-sm font-bold text-[#26372B]">
+                Reported Locations Around Srinagar
               </h2>
-              <div className="flex items-center gap-3 text-[11px] font-semibold text-slate-600">
+              <div className="flex items-center gap-3 text-xs text-[#526356]">
                 <span className="flex items-center gap-1">
-                  <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span> Low
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#21834A]"></span> Low
                 </span>
                 <span className="flex items-center gap-1">
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Medium
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-600"></span> Medium
                 </span>
                 <span className="flex items-center gap-1">
-                  <span className="w-2.5 h-2.5 rounded-full bg-red-500"></span> High/Critical
-                </span>
-                <span className="flex items-center gap-1 text-rose-700">
-                  <span className="w-3 h-3 rounded-full border border-rose-500 bg-rose-500/20"></span> Hotspot Cluster
+                  <span className="w-2.5 h-2.5 rounded-full bg-red-600"></span> Urgent
                 </span>
               </div>
             </div>
 
-            <div className="h-[440px] rounded-2xl overflow-hidden border border-slate-200 relative z-10">
+            <div className="h-[400px] rounded-xl overflow-hidden border border-[#DCE6DF] relative z-10">
               <MapContainer
                 center={[34.0837, 74.7973]}
                 zoom={12}
@@ -333,28 +641,16 @@ export default function Reports() {
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
 
-                {/* Individual Complaint Markers */}
                 {reports.map((rep) => {
                   const coords = [rep.location.coordinates[1], rep.location.coordinates[0]];
                   return (
                     <Marker key={rep._id} position={coords} icon={createReportIcon(rep.severity)}>
                       <Popup>
-                        <div className="p-1 space-y-1.5 text-xs">
-                          <div className="font-bold text-slate-900">{rep.wardName}</div>
-                          <div className="text-[11px] text-slate-500">{rep.address}</div>
-                          <div className="pt-1 border-t border-slate-200 space-y-0.5">
-                            <div className="flex justify-between gap-4 font-semibold">
-                              <span>Category:</span>
-                              <span className="text-slate-700">{rep.wasteCategory.replace(/_/g, ' ')}</span>
-                            </div>
-                            <div className="flex justify-between gap-4 font-semibold">
-                              <span>Severity:</span>
-                              <span className="text-rose-600">{rep.severity}</span>
-                            </div>
-                            <div className="flex justify-between gap-4">
-                              <span>Status:</span>
-                              <span className="font-bold uppercase text-slate-800">{rep.status}</span>
-                            </div>
+                        <div className="p-1 space-y-1 text-xs">
+                          <div className="font-bold text-[#26372B]">{rep.wardName}</div>
+                          <div className="text-[#526356]">{rep.address}</div>
+                          <div className="pt-1 border-t border-slate-200 text-[#26372B]">
+                            Status: <strong>{rep.status}</strong>
                           </div>
                         </div>
                       </Popup>
@@ -362,329 +658,28 @@ export default function Reports() {
                   );
                 })}
 
-                {/* 250m Hotspot Cluster Circles */}
                 {hotspots.map((hot, idx) => (
                   <Circle
                     key={idx}
                     center={[hot.centerCoordinates[1], hot.centerCoordinates[0]]}
                     radius={250}
                     pathOptions={{
-                      color: '#e11d48',
-                      fillColor: '#fb7185',
-                      fillOpacity: 0.25,
-                      weight: 2,
-                      dashArray: '4, 4',
+                      color: '#dc2626',
+                      fillColor: '#f87171',
+                      fillOpacity: 0.2,
+                      weight: 1.5,
                     }}
                   >
                     <Popup>
-                      <div className="p-1 space-y-1 text-xs">
-                        <div className="font-bold text-rose-900">
-                          Hotspot Cluster #{idx + 1}
-                        </div>
-                        <div className="text-slate-600">
-                          {hot.reportCount} spatial complaints within 250m radius
-                        </div>
+                      <div className="p-1 text-xs">
+                        <strong>Frequent Dumping Area</strong>
+                        <div>{hot.reportCount} reports nearby</div>
                       </div>
                     </Popup>
                   </Circle>
                 ))}
               </MapContainer>
             </div>
-          </div>
-
-          {/* Recent Reports Feed */}
-          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4">
-            <h3 className="text-base font-bold text-slate-900">Recent Citizen Dumping Complaints</h3>
-
-            {loading ? (
-              <div className="py-12 text-center text-xs text-slate-400">Loading complaint feed...</div>
-            ) : reports.length === 0 ? (
-              <div className="py-8 text-center text-xs text-slate-500">
-                No illicit dumping reports recorded.
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {reports.slice(0, 6).map((r) => (
-                  <div
-                    key={r._id}
-                    className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 transition-colors space-y-3 flex flex-col justify-between"
-                  >
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-bold text-slate-700 flex items-center gap-1">
-                          <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                          {r.wardName}
-                        </span>
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
-                          r.status === 'RESOLVED'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : r.status === 'VERIFIED'
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'bg-amber-100 text-amber-800'
-                        }`}>
-                          {r.status}
-                        </span>
-                      </div>
-
-                      <p className="text-xs text-slate-600 line-clamp-2">{r.description}</p>
-                    </div>
-
-                    <div className="pt-2 border-t border-slate-200/80 flex items-center justify-between text-[11px] text-slate-500">
-                      <span className="font-semibold text-rose-700 uppercase">
-                        {r.severity} Priority
-                      </span>
-                      <span>{new Date(r.createdAt).toLocaleDateString()}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* VIEW 2: MY SUBMISSIONS */}
-      {subtab === 'MY_SUBMISSIONS' && (
-        <div className="space-y-6">
-          <div className="p-5 rounded-3xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">
-            <div>
-              <h3 className="font-extrabold text-base text-slate-900">Your Submitted Complaints</h3>
-              <p className="text-xs text-slate-500">Municipal verification awards +50 Eco-Credits to your profile.</p>
-            </div>
-            <div className="text-right">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Submitted</span>
-              <div className="text-2xl font-extrabold text-slate-900">{myReports.length}</div>
-            </div>
-          </div>
-
-          {loadingMy ? (
-            <div className="py-16 text-center text-xs text-slate-400">Loading your submissions...</div>
-          ) : myReports.length === 0 ? (
-            <div className="p-12 rounded-3xl bg-white border border-slate-200 shadow-xs text-center space-y-3">
-              <AlertOctagon className="w-10 h-10 text-slate-300 mx-auto" />
-              <h3 className="text-base font-bold text-slate-800">You haven't submitted any dumping reports yet</h3>
-              <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                Help keep Srinagar clean. Report illegal dumpsites with photos and GPS coordinates to earn +50 Eco-Credits upon municipal verification.
-              </p>
-              <button
-                onClick={() => setShowModal(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-rose-600 text-white text-xs font-bold shadow-xs hover:bg-rose-700"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Submit a Complaint</span>
-              </button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {myReports.map((item) => (
-                <div
-                  key={item._id}
-                  className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden flex flex-col justify-between"
-                >
-                  <div className="p-5 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-700 flex items-center gap-1">
-                        <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                        {item.wardName}
-                      </span>
-                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
-                        item.status === 'RESOLVED'
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : item.status === 'VERIFIED'
-                          ? 'bg-blue-100 text-blue-800'
-                          : item.status === 'REJECTED'
-                          ? 'bg-rose-100 text-rose-800'
-                          : 'bg-amber-100 text-amber-800'
-                      }`}>
-                        {item.status}
-                      </span>
-                    </div>
-
-                    <div className="text-xs text-slate-500 font-medium">
-                      {item.address}
-                    </div>
-
-                    <p className="text-xs text-slate-800 font-semibold leading-relaxed">
-                      {item.description}
-                    </p>
-
-                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-                      <span className="font-bold text-rose-600">{item.severity} Severity</span>
-                      <span>{new Date(item.createdAt).toLocaleDateString()}</span>
-                    </div>
-                  </div>
-
-                  <div className="p-5 pt-0">
-                    {(item.status === 'VERIFIED' || item.status === 'RESOLVED') ? (
-                      <div className="p-2 rounded-xl bg-emerald-50 text-emerald-800 text-xs text-center font-bold flex items-center justify-center gap-1">
-                        <Award className="w-3.5 h-3.5 text-amber-500" />
-                        <span>Verified! +50 Eco-Credits Awarded</span>
-                      </div>
-                    ) : item.status === 'REJECTED' ? (
-                      <div className="p-2 rounded-xl bg-rose-50 text-rose-700 text-xs text-center font-semibold">
-                        Report not verified
-                      </div>
-                    ) : (
-                      <div className="p-2 rounded-xl bg-amber-50 text-amber-800 text-xs text-center font-medium">
-                        Pending municipal inspection
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Report Modal */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="max-w-lg w-full bg-white rounded-3xl p-6 sm:p-8 space-y-4 border border-slate-200 shadow-2xl my-8">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <AlertOctagon className="w-4 h-4 text-rose-600" />
-                <span>Report Illicit Open Dumping Site</span>
-              </h3>
-              <button
-                onClick={() => setShowModal(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Waste Category *
-                  </label>
-                  <select
-                    value={formData.wasteCategory}
-                    onChange={(e) => setFormData({ ...formData, wasteCategory: e.target.value })}
-                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs bg-white"
-                  >
-                    <option value="MIXED_MUNICIPAL">Mixed Municipal Waste</option>
-                    <option value="CONSTRUCTION_DEBRIS">Construction Debris</option>
-                    <option value="PLASTIC_POLLUTION">Plastic Pollution</option>
-                    <option value="BIO_ORGANIC">Bio-Waste / Carcasses</option>
-                    <option value="HAZARDOUS_MEDICAL">Hazardous / Medical</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Severity Level *
-                  </label>
-                  <select
-                    value={formData.severity}
-                    onChange={(e) => setFormData({ ...formData, severity: e.target.value })}
-                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs bg-white"
-                  >
-                    <option value="LOW">Low (Small roadside litter)</option>
-                    <option value="MEDIUM">Medium (Noticeable pile)</option>
-                    <option value="HIGH">High (Obstructing drainage)</option>
-                    <option value="CRITICAL">Critical (Hazardous/Near water)</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Srinagar Ward *
-                  </label>
-                  <select
-                    value={formData.wardName}
-                    onChange={(e) => setFormData({ ...formData, wardName: e.target.value })}
-                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs bg-white"
-                  >
-                    {SRINAGAR_WARDS.map((w) => (
-                      <option key={w} value={w}>
-                        {w}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Street / Landmark *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Behind SKIMS Outer Gate"
-                    value={formData.address}
-                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs"
-                  />
-                </div>
-              </div>
-
-              {/* GPS Coordinates & Autodetect */}
-              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between">
-                <div className="text-xs text-slate-600">
-                  <span>GPS: </span>
-                  <strong>{formData.coordinates[0]}</strong>° E, <strong>{formData.coordinates[1]}</strong>° N
-                </div>
-                <button
-                  type="button"
-                  onClick={handleDetectGps}
-                  disabled={detectingGps}
-                  className="px-3 py-1.5 rounded-xl bg-white border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50"
-                >
-                  {detectingGps ? 'Detecting...' : 'Detect GPS'}
-                </button>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Incident Description
-                </label>
-                <textarea
-                  rows={2}
-                  placeholder="Provide additional details regarding dumping time or vehicle registration if observed..."
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Site Photo (Optional)
-                </label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    setPhotoFile(file || null);
-                    setPhotoPreview(file ? URL.createObjectURL(file) : null);
-                  }}
-                  className="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200"
-                />
-              </div>
-
-              <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-xs font-semibold hover:bg-slate-200"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow-xs disabled:opacity-60"
-                >
-                  {submitting ? 'Submitting Report...' : 'Submit Report (+50 pts on verify)'}
-                </button>
-              </div>
-            </form>
           </div>
         </div>
       )}

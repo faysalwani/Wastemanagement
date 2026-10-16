@@ -36,7 +36,7 @@ const sendEmail = async ({ email, subject, text, html, otp }) => {
       });
 
       const message = {
-        from: process.env.SMTP_FROM || `"EcoCycle Srinagar" <${process.env.SMTP_USER}>`,
+        from: process.env.SMTP_FROM || `"Clear Waste" <${process.env.SMTP_USER}>`,
         to: email,
         subject,
         text,

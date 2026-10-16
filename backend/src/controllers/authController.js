@@ -121,13 +121,13 @@ exports.initiateRegistration = async (req, res, next) => {
     // Dispatch verification email
     await sendEmail({
       email: normalizedEmail,
-      subject: 'Verify Your Citizen Account — EcoCycle Srinagar',
-      text: `Your EcoCycle citizen verification code is: ${rawOtp}. Valid for 10 minutes.`,
+      subject: 'Verify Your Citizen Account — Clear Waste',
+      text: `Your Clear Waste citizen verification code is: ${rawOtp}. Valid for 10 minutes.`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; rounded: 16px;">
-          <h2 style="color: #059669;">Welcome to EcoCycle Srinagar 🌿</h2>
+          <h2 style="color: #21834A;">Welcome to Clear Waste 🌿</h2>
           <p>Please enter the following 6-digit verification code to activate your Citizen account:</p>
-          <div style="font-size: 28px; font-weight: bold; letter-spacing: 6px; color: #0f172a; padding: 16px 0; font-family: monospace;">
+          <div style="font-size: 28px; font-weight: bold; letter-spacing: 6px; color: #26372B; padding: 16px 0; font-family: monospace;">
             ${rawOtp}
           </div>
           <p style="color: #64748b; font-size: 12px;">This code will expire in 10 minutes. Do not share this code with anyone.</p>
@@ -140,7 +140,7 @@ exports.initiateRegistration = async (req, res, next) => {
       success: true,
       message: `A 6-digit verification code has been dispatched to ${normalizedEmail}.`,
       cooldownSeconds: 60,
-      demoOtp: rawOtp, // For automated testing and viva examination presentation
+      ...(process.env.NODE_ENV === 'test' && { demoOtp: rawOtp }),
     });
   } catch (err) {
     next(err);
@@ -235,8 +235,8 @@ exports.verifyRegistration = async (req, res, next) => {
     await Notification.create({
       userId: user._id,
       type: 'SYSTEM_BROADCAST',
-      title: 'Welcome to EcoCycle Srinagar! 🌿',
-      message: `Welcome ${user.name}! Your Citizen account is active. Join community segregation and earn Eco-Credits.`,
+      title: 'Welcome to Clear Waste! 🌿',
+      message: `Welcome ${user.name}! Your Citizen account is active. Scan waste, request pickups, and earn rewards.`,
     });
 
     // 28-day JWT token issued for Citizen
@@ -244,7 +244,7 @@ exports.verifyRegistration = async (req, res, next) => {
 
     res.status(201).json({
       success: true,
-      message: 'Citizen account activated successfully! Welcome to EcoCycle.',
+      message: 'Citizen account activated successfully! Welcome to Clear Waste.',
       token,
       user: {
         id: user._id,
@@ -339,13 +339,13 @@ exports.loginCitizen = async (req, res, next) => {
 
       await sendEmail({
         email: user.email,
-        subject: 'Monthly Security Verification — EcoCycle Srinagar',
+        subject: 'Monthly Security Verification — Clear Waste',
         text: `Your monthly citizen login verification code is: ${rawOtp}. Valid for 10 minutes.`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; rounded: 16px;">
-            <h2 style="color: #059669;">Monthly Security Verification 🔒</h2>
+            <h2 style="color: #21834A;">Monthly Security Verification 🔒</h2>
             <p>To keep your Citizen account secure, periodic email verification is required once every 30 days.</p>
-            <div style="font-size: 28px; font-weight: bold; letter-spacing: 6px; color: #0f172a; padding: 16px 0; font-family: monospace;">
+            <div style="font-size: 28px; font-weight: bold; letter-spacing: 6px; color: #26372B; padding: 16px 0; font-family: monospace;">
               ${rawOtp}
             </div>
             <p style="color: #64748b; font-size: 12px;">Expires in 10 minutes.</p>
@@ -359,7 +359,7 @@ exports.loginCitizen = async (req, res, next) => {
         requireMonthlyOtp: true,
         message: 'Monthly security verification required. A 6-digit code has been sent to your email.',
         cooldownSeconds: 60,
-        demoOtp: rawOtp,
+        ...(process.env.NODE_ENV === 'test' && { demoOtp: rawOtp }),
       });
     }
 
@@ -571,13 +571,13 @@ exports.sendStaffOtp = async (req, res, next) => {
     // Send via email
     await sendEmail({
       email: user.email,
-      subject: `${user.role} Secure Access Code — EcoCycle Srinagar`,
+      subject: `${user.role} Secure Access Code — Clear Waste`,
       text: `Your ${user.role} login verification code is: ${rawOtp}. Valid for 10 minutes.`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 24px; border: 1px solid #cbd5e1; rounded: 16px;">
-          <h2 style="color: #0f172a;">${user.role} Identity Verification 🛡️</h2>
-          <p>You requested login access to the Srinagar Municipal Waste Logistics Grid.</p>
-          <div style="font-size: 28px; font-weight: bold; letter-spacing: 6px; color: #0f172a; padding: 16px 0; font-family: monospace;">
+          <h2 style="color: #21834A;">${user.role} Identity Verification 🛡️</h2>
+          <p>You requested login access to the Clear Waste Operations Portal.</p>
+          <div style="font-size: 28px; font-weight: bold; letter-spacing: 6px; color: #26372B; padding: 16px 0; font-family: monospace;">
             ${rawOtp}
           </div>
           <p style="color: #64748b; font-size: 12px;">Valid for 10 minutes. If you did not request this, inform the Super Administrator immediately.</p>
@@ -590,7 +590,7 @@ exports.sendStaffOtp = async (req, res, next) => {
       success: true,
       message: `A 6-digit verification code has been dispatched to ${user.email}.`,
       cooldownSeconds: 60,
-      demoOtp: rawOtp,
+      ...(process.env.NODE_ENV === 'test' && { demoOtp: rawOtp }),
     });
   } catch (err) {
     next(err);
@@ -768,13 +768,13 @@ exports.forgotPassword = async (req, res, next) => {
 
     await sendEmail({
       email: user.email,
-      subject: 'Password Reset Code — EcoCycle Srinagar',
+      subject: 'Password Reset Code — Clear Waste',
       text: `Your password reset code is: ${rawOtp}. Valid for 15 minutes.`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 24px; border: 1px solid #cbd5e1; rounded: 16px;">
-          <h2 style="color: #e11d48;">Citizen Password Reset 🔑</h2>
-          <p>We received a request to reset your EcoCycle citizen account password.</p>
-          <div style="font-size: 28px; font-weight: bold; letter-spacing: 6px; color: #0f172a; padding: 16px 0; font-family: monospace;">
+          <h2 style="color: #21834A;">Citizen Password Reset 🔑</h2>
+          <p>We received a request to reset your Clear Waste citizen account password.</p>
+          <div style="font-size: 28px; font-weight: bold; letter-spacing: 6px; color: #26372B; padding: 16px 0; font-family: monospace;">
             ${rawOtp}
           </div>
           <p style="color: #64748b; font-size: 12px;">Valid for 15 minutes. If you did not request this, you can safely ignore this email.</p>
@@ -786,7 +786,7 @@ exports.forgotPassword = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: 'If an account is associated with this email, a password reset code has been dispatched.',
-      demoOtp: rawOtp,
+      ...(process.env.NODE_ENV === 'test' && { demoOtp: rawOtp }),
     });
   } catch (err) {
     next(err);
@@ -1101,7 +1101,7 @@ exports.sendOtpUniversal = async (req, res, next) => {
     res.status(200).json({
       success: true,
       cooldownSeconds: 60,
-      demoOtp: rawOtp,
+      ...(process.env.NODE_ENV === 'test' && { demoOtp: rawOtp }),
     });
   } catch (err) {
     next(err);

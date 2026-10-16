@@ -1,9 +1,10 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import { SocketProvider } from './context/SocketContext';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Navbar from './components/Navbar';
+import BrandLogo from './components/BrandLogo';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -24,14 +25,47 @@ import Marketplace from './pages/Marketplace';
 import Orders from './pages/Orders';
 import Recyclers from './pages/Recyclers';
 
+function NotFoundPage() {
+  return (
+    <div className="max-w-xl mx-auto px-4 py-24 text-center space-y-5">
+      <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[#E5F4E8] text-[#21834A] font-extrabold text-2xl">
+        404
+      </div>
+      <h1 className="text-2xl sm:text-3xl font-bold text-[#26372B]">
+        Page not found
+      </h1>
+      <p className="text-sm sm:text-base text-[#526356]">
+        We couldn’t find the page you were looking for. Use the button below to return home.
+      </p>
+      <div className="pt-2">
+        <Link
+          to="/"
+          className="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-[#21834A] hover:bg-[#1B6E3E] text-white text-sm font-semibold transition-colors"
+        >
+          Back to Clear Waste Home
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   return (
     <SocketProvider>
       <AuthProvider>
         <Router>
-          <div className="min-h-screen flex flex-col bg-slate-50 text-slate-800">
+          <div className="min-h-screen flex flex-col bg-[#F8FAF8] text-[#26372B]">
+            {/* Accessible Skip Link */}
+            <a
+              href="#main-content"
+              className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:px-4 focus:py-2 focus:rounded-xl focus:bg-[#21834A] focus:text-white focus:font-semibold"
+            >
+              Skip to main content
+            </a>
+
             <Navbar />
-            <main className="flex-1">
+
+            <main id="main-content" className="flex-1">
               <Routes>
                 {/* Public Routes */}
                 <Route path="/" element={<Home />} />
@@ -108,17 +142,43 @@ export default function App() {
                     </ProtectedRoute>
                   }
                 />
+
+                {/* Fallback 404 Route */}
+                <Route path="*" element={<NotFoundPage />} />
               </Routes>
             </main>
 
             {/* Global Footer */}
-            <footer className="bg-white border-t border-slate-200 py-8">
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
-                <p>
-                  © 2026 <strong>EcoCycle Srinagar</strong> — M.Sc. AI & ML Major Project (NDU202500069).
-                </p>
-                <p className="flex items-center gap-2">
-                  <span>NIELIT Deemed to be University • NDU Campus Srinagar</span>
+            <footer className="bg-white border-t border-[#DCE6DF] py-10 mt-16">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                <BrandLogo showTagline={true} size="sm" />
+
+                <nav
+                  aria-label="Footer Navigation"
+                  className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-[#526356]"
+                >
+                  <Link to="/scan" className="hover:text-[#21834A] transition-colors">
+                    Scan Waste
+                  </Link>
+                  <Link to="/collection" className="hover:text-[#21834A] transition-colors">
+                    Request a Pickup
+                  </Link>
+                  <Link to="/reports" className="hover:text-[#21834A] transition-colors">
+                    Report Dumping
+                  </Link>
+                  <Link to="/exchange" className="hover:text-[#21834A] transition-colors">
+                    Reuse & Share
+                  </Link>
+                  <Link to="/recyclers" className="hover:text-[#21834A] transition-colors">
+                    Recycling Centres
+                  </Link>
+                  <Link to="/marketplace" className="hover:text-[#21834A] transition-colors">
+                    My Rewards
+                  </Link>
+                </nav>
+
+                <p className="text-xs text-[#526356]">
+                  © {new Date().getFullYear()} <strong>Clear Waste</strong>. Smarter waste. Cleaner communities.
                 </p>
               </div>
             </footer>

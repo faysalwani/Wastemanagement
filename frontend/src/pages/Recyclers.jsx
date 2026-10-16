@@ -93,38 +93,38 @@ export default function Recyclers() {
       {/* Header Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold mb-2">
-            <Recycle className="w-3.5 h-3.5 text-emerald-600" />
-            Verified Circular Economy Partners
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#E5F4E8] border border-[#BCE0C6] text-[#1A693B] text-xs font-semibold mb-2">
+            <Recycle className="w-3.5 h-3.5 text-[#21834A]" />
+            Verified Recycling Centers
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-            Recycler & Scrap Recovery Directory
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#26372B] tracking-tight">
+            Local Recyclers & Drop-Off Directory
           </h1>
-          <p className="text-xs sm:text-sm text-slate-600 mt-1">
-            Discover authorized local scrap dealers, dry recyclers, and hazardous e-waste collection points across Srinagar.
+          <p className="text-sm text-[#526356] mt-1">
+            Find authorized scrap buyers, paper and plastic recyclers, and e-waste drop-off centers near you.
           </p>
         </div>
 
         {/* View Switcher */}
-        <div className="flex p-1 rounded-2xl bg-slate-100 border border-slate-200 self-start sm:self-auto text-xs font-bold">
+        <div className="flex p-1.5 rounded-2xl bg-white border border-[#DCE6DF] self-start sm:self-auto text-xs sm:text-sm font-bold gap-1">
           <button
             type="button"
             onClick={() => setViewMode('CARDS')}
             className={`px-4 py-2 rounded-xl transition-all ${
               viewMode === 'CARDS'
-                ? 'bg-white text-slate-900 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-[#21834A] text-white shadow-xs'
+                : 'text-[#526356] hover:text-[#26372B]'
             }`}
           >
-            Facility Cards
+            Directory List
           </button>
           <button
             type="button"
             onClick={() => setViewMode('MAP')}
             className={`px-4 py-2 rounded-xl transition-all ${
               viewMode === 'MAP'
-                ? 'bg-white text-slate-900 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-[#21834A] text-white shadow-xs'
+                : 'text-[#526356] hover:text-[#26372B]'
             }`}
           >
             Map View

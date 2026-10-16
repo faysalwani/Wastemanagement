@@ -132,26 +132,34 @@ export default function Wallet() {
       {/* Top Banner & Wallet Identity */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold mb-2">
-            <Coins className="w-3.5 h-3.5 text-emerald-600" />
-            Verified Reward Currency
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#E5F4E8] border border-[#BCE0C6] text-[#1A693B] text-xs font-semibold mb-2">
+            <Coins className="w-3.5 h-3.5 text-[#21834A]" />
+            My Rewards & Points
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-            Eco-Credit Digital Wallet
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#26372B] tracking-tight">
+            My Reward Points & History
           </h1>
-          <p className="text-xs sm:text-sm text-slate-600 mt-1">
-            Track verified circular economy earnings, monitor tier standing, and redeem rewards.
+          <p className="text-sm text-[#526356] mt-1">
+            View your current points balance, recent activity history, and redeem points in the store.
           </p>
         </div>
 
-        <Link
-          to="/marketplace"
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold shadow-md shadow-emerald-600/20 transition-all"
-        >
-          <ShoppingBag className="w-4 h-4" />
-          <span>Redeem in Marketplace</span>
-          <ArrowRight className="w-3.5 h-3.5" />
-        </Link>
+        <div className="flex items-center gap-2.5">
+          <Link
+            to="/orders"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white border border-[#DCE6DF] hover:bg-[#F8FAF8] text-[#26372B] text-xs sm:text-sm font-bold transition-colors"
+          >
+            <span>My Orders</span>
+          </Link>
+          <Link
+            to="/marketplace"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-[#21834A] hover:bg-[#1A693B] text-white text-xs sm:text-sm font-bold shadow-xs transition-colors"
+          >
+            <ShoppingBag className="w-4 h-4" />
+            <span>Rewards Store</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
       </div>
 
       {/* Main Wallet Grid */}
@@ -164,7 +172,7 @@ export default function Wallet() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-emerald-200 tracking-wider uppercase">
-                EcoCycle Citizen Pass
+                Clear Waste Member Pass
               </span>
               <span className="px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-xs font-extrabold border border-white/20">
                 {tier}

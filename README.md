@@ -1,4 +1,4 @@
-# EcoCycle Srinagar — Smart Waste & Resource Recovery System
+# Clear Waste — Smarter waste. Cleaner communities.
 
 > **An IoT-Based Intelligent Waste Management and Resource Recovery System for Local Communities**  
 > **Academic Major Project (Semester III/IV)** — M.Sc. Artificial Intelligence & Machine Learning  
@@ -38,7 +38,7 @@
 7. [Authentication, Security & Role-Based Access Control (RBAC)](#7-authentication-security--role-based-access-control-rbac)
    - [Public Citizen Registration Flow](#public-citizen-registration-flow)
    - [Staff & Privileged Login (Driver, Admin, Super Admin)](#staff--privileged-login-driver-admin-super-admin)
-   - [Pre-Configured Evaluation Accounts](#pre-configured-evaluation-accounts)
+   - [Local Development Seeded Accounts](#local-development-seeded-accounts)
 8. [AI Microservice (MobileNetV3 & Independent Deployment)](#8-ai-microservice-mobilenetv3--independent-deployment)
 9. [IoT Hardware & Embedded Firmware](#9-iot-hardware--embedded-firmware)
 10. [Scientific Formulas & Mathematical Formulations](#10-scientific-formulas--mathematical-formulations)
@@ -51,12 +51,12 @@
 
 ## 1. Executive Summary & Core Philosophy
 
-**EcoCycle Srinagar** is an intelligent, cyber-physical municipal waste management and resource recovery platform designed for local urban communities, specifically tailored to the geographical and infrastructural topography of **Srinagar, Jammu & Kashmir**.
+**Clear Waste** (*Smarter waste. Cleaner communities.*) is an intelligent, cyber-physical municipal waste management and resource recovery platform designed for local urban communities, specifically tailored to **Srinagar, Jammu & Kashmir**.
 
 ### The Core Paradigm
 $$\text{Generate Less} \longrightarrow \text{Reuse} \longrightarrow \text{Compost / Recover} \longrightarrow \text{Recycle} \longrightarrow \text{Collect} \longrightarrow \text{Process} \longrightarrow \text{Dispose Only What Remains}$$
 
-Traditional municipal solid waste (MSW) approaches rely on static, blind collection schedules, causing overflowing dumpsters, high fuel consumption, and illegal open dumping along sensitive water bodies (e.g., Dal Lake, Jhelum River). **EcoCycle Srinagar** solves this through a multi-tiered architecture combining:
+Traditional municipal solid waste (MSW) approaches rely on static, blind collection schedules, causing overflowing dumpsters, high fuel consumption, and illegal open dumping along sensitive water bodies (e.g., Dal Lake, Jhelum River). **Clear Waste** solves this through a multi-tiered architecture combining:
 1. **IoT Smart Dustbins:** ESP32 nodes with ultrasonic fill telemetry and load-cell weight estimation.
 2. **Deep Learning Vision:** MobileNetV3 CNN for real-time household waste stream classification.
 3. **Vehicle Routing Problem (VRP):** Dynamic, capacity-constrained route optimization using Google OR-Tools.
@@ -71,7 +71,7 @@ The platform is structured into four distinct, role-segregated portals:
 
 ```
                             ┌─────────────────────────────────────────┐
-                            │          EcoCycle Srinagar Grid         │
+                            │             Clear Waste Grid            │
                             └────────────────────┬────────────────────┘
                                                  │
          ┌───────────────────┬───────────────────┼───────────────────┬───────────────────┐
@@ -456,17 +456,17 @@ Staff members and municipal officials authenticate via two-factor email OTP logi
 [ Route to Dedicated Portal: /driver, /admin, or /super-admin ]
 ```
 
-### Pre-Configured Evaluation Accounts
-For examination and live demonstration, the following accounts are pre-seeded in the database:
+### Local Development Seeded Accounts
+For local development and evaluation (`npm run seed`), the following role accounts are created:
 
-| Portal | Email | Password / Auth Mode | Initial Eco-Credits | Primary Capabilities |
+| Portal | Role | Auth Mode | Initial Eco-Credits | Primary Capabilities |
 |---|---|---|---|---|
-| **Citizen** | `citizen@ecocycle.local` | `Citizen@123` | **1,250 EC** (Gold Champion) | AI Scan, Composting Assistant, P2P Exchange, Collection Radar, Dumping Reports, Rewards Marketplace, Wallet |
-| **Driver** | `driver@ecocycle.local` | OTP Login (`Driver@123`) | — | Active Route Manifest, Turn-by-Turn Waypoints, 500m Proximity Trigger, Bin Clearance Logging |
-| **Admin** | `admin@ecocycle.local` | OTP Login (`Admin@123`) | — | 11 Municipal Operations Tabs, VRP Dispatch, Smart Bin Telemetry, Alert Management, Fleet Control, Product Catalog |
-| **Super Admin** | `faysalwani9086@gmail.com` | OTP Login (`SuperAdmin@123`) | — | Root Governance, System Bootstrap Elevation, Audit Logs, Staff Account Role Assignments |
+| **Citizen** | `CITIZEN` | Email + Password (with 6-digit signup verification) | **120 EC** | AI Scan, Composting Assistant, Reuse & Share, Request Pickup, Report Dumping, Rewards Store |
+| **Driver** | `DRIVER` | Passwordless 6-digit Email OTP | — | Current Assignment, Route Stops, Pickup Confirmation, Live GPS Broadcast |
+| **Admin** | `ADMIN` | Passwordless 6-digit Email OTP | — | Operations Overview, Pickup Requests, Route Dispatch, Smart Bins, Alerts, Fleet, Rewards |
+| **Super Admin** | `SUPER_ADMIN` | Passwordless 6-digit Email OTP | — | Root Governance, System Bootstrap Elevation, Audit Logs, Staff Account Role Assignments |
 
-*(Note: During local development, the generated OTP is always printed to the backend terminal if SMTP is unconfigured).*
+*(Note: Seed scripts are restricted from running in production unless `ALLOW_PRODUCTION_SEED=true` is explicitly configured).*
 
 ---
 

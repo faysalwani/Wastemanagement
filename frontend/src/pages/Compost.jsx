@@ -158,28 +158,28 @@ export default function Compost() {
     <div className="max-w-7xl mx-auto px-4 py-10 space-y-12">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold mb-2">
-            <Leaf className="w-3.5 h-3.5 text-emerald-600" />
-            Biochemical Organic Waste Recovery
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#E5F4E8] border border-[#BCE0C6] text-[#1A693B] text-xs font-semibold mb-2">
+            <Leaf className="w-3.5 h-3.5 text-[#21834A]" />
+            Home & Community Composting
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
-            Household & Community Composting Assistant
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#26372B] tracking-tight">
+            Composting Guide & Batch Tracker
           </h1>
-          <p className="text-xs sm:text-sm text-slate-600 mt-1">
-            Optimize C:N ratios, monitor microbial decomposition phases, and track organic diversion.
+          <p className="text-sm text-[#526356] mt-1">
+            Turn kitchen scraps and dry leaves into healthy garden compost and earn reward points for every batch you log.
           </p>
         </div>
 
-        <div className="flex p-1 rounded-2xl bg-slate-100 border border-slate-200 self-start sm:self-auto text-xs font-bold">
+        <div className="flex p-1.5 rounded-2xl bg-white border border-[#DCE6DF] self-start sm:self-auto text-xs sm:text-sm font-bold gap-1">
           <button
             onClick={() => setActiveTab('SIMULATOR')}
             className={`px-4 py-2 rounded-xl transition-all ${
               activeTab === 'SIMULATOR'
-                ? 'bg-white text-slate-900 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-[#21834A] text-white shadow-xs'
+                : 'text-[#526356] hover:text-[#26372B]'
             }`}
           >
-            🌱 Simulator & Guide
+            🌱 Mix Planner & Guide
           </button>
           <button
             onClick={() => {
@@ -188,25 +188,25 @@ export default function Compost() {
             }}
             className={`px-4 py-2 rounded-xl transition-all flex items-center gap-1.5 ${
               activeTab === 'MY_BATCHES'
-                ? 'bg-white text-slate-900 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-[#21834A] text-white shadow-xs'
+                : 'text-[#526356] hover:text-[#26372B]'
             }`}
           >
             <History className="w-3.5 h-3.5" />
-            <span>My Batches {myBatches.length > 0 && `(${myBatches.length})`}</span>
+            <span>My Compost Batches {myBatches.length > 0 && `(${myBatches.length})`}</span>
           </button>
         </div>
       </div>
 
       {saveSuccess && (
-        <div className="flex items-center gap-2 p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 shadow-xs animate-fade-in">
-          <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+        <div className="flex items-center gap-2 p-4 rounded-2xl bg-[#E5F4E8] border border-[#BCE0C6] text-xs sm:text-sm text-[#1A693B] shadow-xs">
+          <CheckCircle className="w-4 h-4 text-[#21834A] flex-shrink-0" />
           <span className="font-semibold">{saveSuccess}</span>
         </div>
       )}
 
       {saveError && (
-        <div className="flex items-center gap-2 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-900 shadow-xs">
+        <div className="flex items-center gap-2 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-xs sm:text-sm text-rose-900 shadow-xs">
           <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0" />
           <span>{saveError}</span>
         </div>
@@ -214,19 +214,19 @@ export default function Compost() {
 
       {activeTab === 'SIMULATOR' && (
         <div className="space-y-12">
-          <section className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-xs space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-slate-100">
+          <section className="bg-white p-6 sm:p-8 rounded-3xl border border-[#DCE6DF] shadow-xs space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-[#DCE6DF]">
               <div>
-                <h2 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-                  <Sprout className="w-5 h-5 text-emerald-600" />
-                  <span>Interactive C:N Ratio & Microbial Aeration Simulator</span>
+                <h2 className="text-base sm:text-lg font-bold text-[#26372B] flex items-center gap-2">
+                  <Sprout className="w-5 h-5 text-[#21834A]" />
+                  <span>Compost Mix Calculator</span>
                 </h2>
-                <p className="text-xs text-slate-500">
-                  Adjust kitchen organic waste (Nitrogen) and dry bulking material (Carbon) to calculate microbial decay rates.
+                <p className="text-xs sm:text-sm text-[#526356]">
+                  Balance wet kitchen scraps ("Greens") with dry leaves or cardboard ("Browns") for odor-free compost.
                 </p>
               </div>
               <div className={`px-3 py-1 rounded-full text-xs font-bold border self-start sm:self-auto ${ratioBadge.color}`}>
-                Ratio: {estimatedRatio}:1 ({ratioBadge.label})
+                Mix Balance: {ratioBadge.label}
               </div>
             </div>
 

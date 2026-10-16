@@ -23,6 +23,11 @@ const {
 } = require('../models');
 
 const seedData = async () => {
+  if (process.env.NODE_ENV === 'production' && process.env.ALLOW_PRODUCTION_SEED !== 'true') {
+    console.error('[Seeder] Refusing to run destructive database seed in production without ALLOW_PRODUCTION_SEED=true.');
+    process.exit(1);
+  }
+
   try {
     await connectDB();
     console.log('[Seeder] Connected to database. Purging existing seed data...');
@@ -612,12 +617,12 @@ const seedData = async () => {
 
     console.log('[Seeder] Default Reward Configuration seeded.');
     console.log('=======================================================');
-    console.log('✅ DATABASE SEEDING COMPLETED SUCCESSFULLY!');
-    console.log('Credentials Summary for Viva Testing:');
-    console.log(`👤 Super Admin: ${superAdminUser.email} (Passwordless / OTP)`);
-    console.log('👤 Admin:       admin@ecocycle.local   (Passwordless / OTP)');
-    console.log('👤 Driver:      driver@ecocycle.local  (Passwordless / OTP)');
-    console.log('👤 Citizen:     citizen@ecocycle.local / Citizen@123');
+    console.log('✅ CLEAR WASTE DATABASE SEEDING COMPLETED SUCCESSFULLY!');
+    console.log('Seeded accounts (local development only):');
+    console.log(`👤 Super Admin: ${superAdminUser.email} (OTP)`);
+    console.log('👤 Admin:       admin@ecocycle.local   (OTP)');
+    console.log('👤 Driver:      driver@ecocycle.local  (OTP)');
+    console.log('👤 Citizen:     citizen@ecocycle.local (Password)');
     console.log('=======================================================');
   } catch (error) {
     console.error('[Seeder] Seeding failed with error:', error);

@@ -1,26 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { 
-  Recycle, 
-  UserPlus, 
-  AlertCircle, 
-  MapPin, 
-  Navigation, 
-  Eye, 
-  EyeOff, 
-  Lock, 
-  Mail, 
-  User, 
-  Phone, 
-  Sparkles,
+import {
+  AlertCircle,
+  Navigation,
+  Eye,
+  EyeOff,
+  Lock,
+  Mail,
+  User,
+  Phone,
   CheckCircle2,
   Clock,
   KeyRound,
-  ArrowRight
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { BrandMark } from '../components/BrandLogo';
 
-const SRINAGAR_WARDS = [
+const COMMUNITY_WARDS = [
   'Lal Chowk',
   'Rajbagh',
   'Hazratbal',
@@ -34,7 +30,7 @@ const SRINAGAR_WARDS = [
 ];
 
 export default function Register() {
-  const [step, setStep] = useState(1); // 1: Details form, 2: OTP verification
+  const [step, setStep] = useState(1); // 1: Details, 2: OTP verification
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -47,7 +43,6 @@ export default function Register() {
   });
 
   const [otp, setOtp] = useState('');
-  const [demoOtpHint, setDemoOtpHint] = useState('');
   const [cooldown, setCooldown] = useState(0);
 
   const [showPassword, setShowPassword] = useState(false);
@@ -60,7 +55,6 @@ export default function Register() {
   const { initiateRegister, verifyRegister } = useAuth();
   const navigate = useNavigate();
 
-  // Cooldown countdown timer
   useEffect(() => {
     let timer;
     if (cooldown > 0) {
@@ -69,7 +63,6 @@ export default function Register() {
     return () => clearInterval(timer);
   }, [cooldown]);
 
-  // Password strength meter
   const getPasswordStrength = (pass) => {
     if (!pass) return { score: 0, label: '', color: 'bg-slate-200' };
     if (pass.length < 6) return { score: 1, label: 'Too short', color: 'bg-rose-500' };
@@ -78,14 +71,14 @@ export default function Register() {
     if (/[A-Z]/.test(pass) && /[0-9]/.test(pass)) score++;
     if (/[^A-Za-z0-9]/.test(pass)) score++;
     if (score <= 2) return { score: 2, label: 'Fair', color: 'bg-amber-500' };
-    return { score: 3, label: 'Strong', color: 'bg-emerald-500' };
+    return { score: 3, label: 'Strong', color: 'bg-[#21834A]' };
   };
 
   const passStrength = getPasswordStrength(formData.password);
 
   const handleGpsDetect = () => {
     if (!navigator.geolocation) {
-      setError('Geolocation is not supported by your browser.');
+      setError('Location services are not supported by your browser.');
       return;
     }
 
@@ -96,13 +89,16 @@ export default function Register() {
         const { longitude, latitude } = position.coords;
         setFormData((prev) => ({
           ...prev,
-          coordinates: [parseFloat(longitude.toFixed(6)), parseFloat(latitude.toFixed(6))],
+          coordinates: [
+            parseFloat(longitude.toFixed(6)),
+            parseFloat(latitude.toFixed(6)),
+          ],
         }));
         setGpsSuccess(true);
         setDetectingGps(false);
       },
-      (err) => {
-        setError('Could not access device GPS. Default ward coordinates applied.');
+      () => {
+        setError('Could not access GPS location. Your selected area will be used instead.');
         setDetectingGps(false);
       },
       { timeout: 10000, enableHighAccuracy: true }
@@ -116,7 +112,7 @@ export default function Register() {
     setSuccessMsg('');
 
     if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match. Please re-enter.');
+      setError('Passwords do not match. Please check and try again.');
       return;
     }
 
@@ -142,13 +138,14 @@ export default function Register() {
       if (res.success) {
         setStep(2);
         setCooldown(res.cooldownSeconds || 60);
-        setSuccessMsg(res.message || `A verification code was dispatched to ${formData.email}.`);
-        if (res.demoOtp) setDemoOtpHint(res.demoOtp);
+        setSuccessMsg(
+          res.message || `We sent a 6-digit verification code to ${formData.email}.`
+        );
       }
     } catch (err) {
       setError(
         err.response?.data?.error?.message ||
-        'Registration could not be initiated. Please check your details.'
+          'Could not start registration. Please check your details.'
       );
     } finally {
       setSubmitting(false);
@@ -169,7 +166,7 @@ export default function Register() {
     } catch (err) {
       setError(
         err.response?.data?.error?.message ||
-        'Invalid or expired verification code. Please try again.'
+          'Invalid or expired verification code. Please try again.'
       );
     } finally {
       setSubmitting(false);
@@ -177,185 +174,209 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-[85vh] flex items-center justify-center px-4 py-12">
-      <div className="max-w-lg w-full space-y-6 bg-white p-8 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50">
+    <div className="min-h-[82vh] flex items-center justify-center px-4 py-12">
+      <div className="max-w-lg w-full space-y-6 bg-white p-7 sm:p-9 rounded-2xl border border-[#DCE6DF] shadow-sm">
         {/* Header Branding */}
         <div className="text-center space-y-2">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center text-white mx-auto shadow-md shadow-emerald-500/20">
-            <Recycle className="w-6 h-6" />
+          <div className="flex justify-center">
+            <BrandMark className="w-12 h-12" />
           </div>
-          <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-            Create Citizen Account
-          </h2>
-          <p className="text-xs text-slate-500">
+          <h1 className="text-2xl font-extrabold text-[#26372B] tracking-tight">
+            Create your Clear Waste account
+          </h1>
+          <p className="text-sm text-[#526356]">
             {step === 1
-              ? 'Join the Srinagar municipal smart waste segregation & circular recovery network'
-              : 'Enter the verification code sent to your email to activate your account'}
+              ? 'Request pickups, scan waste and earn community rewards.'
+              : 'Enter the 6-digit verification code sent to your email.'}
           </p>
-        </div>
-
-        {/* Informational Callout */}
-        <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-          <span>
-            Citizen registration grants access to AI Waste Scanning, Household Composting, P2P Exchanges, and Eco-Credits.
-          </span>
         </div>
 
         {/* Feedback Banners */}
         {error && (
-          <div className="flex items-start gap-2.5 p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-700">
-            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+          <div
+            role="alert"
+            className="flex items-start gap-2.5 p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-xs sm:text-sm text-rose-800"
+          >
+            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-rose-600" />
             <span>{error}</span>
           </div>
         )}
 
         {successMsg && (
-          <div className="flex items-start gap-2.5 p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800">
-            <CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-0.5 text-emerald-600" />
+          <div
+            role="status"
+            className="flex items-start gap-2.5 p-3.5 rounded-xl bg-[#E5F4E8] border border-[#C5E6CD] text-xs sm:text-sm text-[#26372B]"
+          >
+            <CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-0.5 text-[#21834A]" />
             <span>{successMsg}</span>
-          </div>
-        )}
-
-        {/* Demo OTP Pill */}
-        {demoOtpHint && step === 2 && (
-          <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-center justify-between">
-            <div>
-              <span className="font-bold block text-[10px] uppercase tracking-wider text-amber-800">
-                Evaluation Demo Code:
-              </span>
-              <span className="font-mono text-base font-extrabold text-amber-950 tracking-widest">
-                {demoOtpHint}
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setOtp(demoOtpHint)}
-              className="px-3 py-1 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-colors"
-            >
-              Fill Code
-            </button>
           </div>
         )}
 
         {/* STEP 1: CITIZEN INFORMATION FORM */}
         {step === 1 && (
           <form className="space-y-4" onSubmit={handleInitiateSubmit}>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Full Name *
+                <label
+                  htmlFor="reg-name"
+                  className="block text-xs font-bold text-[#26372B] mb-1.5"
+                >
+                  Full name *
                 </label>
                 <div className="relative">
-                  <User className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <User className="w-4 h-4 text-[#526356] absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
+                    id="reg-name"
                     type="text"
                     required
-                    placeholder="e.g. Mohd Faisal Wani"
+                    placeholder="Your full name"
                     value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none"
+                    onChange={(e) =>
+                      setFormData({ ...formData, name: e.target.value })
+                    }
+                    className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-[#DCE6DF] text-sm text-[#26372B] focus:border-[#21834A] outline-none"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Contact Phone
+                <label
+                  htmlFor="reg-phone"
+                  className="block text-xs font-bold text-[#26372B] mb-1.5"
+                >
+                  Phone number
                 </label>
                 <div className="relative">
-                  <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <Phone className="w-4 h-4 text-[#526356] absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
+                    id="reg-phone"
                     type="tel"
-                    placeholder="+91 9419012345"
+                    placeholder="Optional contact number"
                     value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none"
+                    onChange={(e) =>
+                      setFormData({ ...formData, phone: e.target.value })
+                    }
+                    className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-[#DCE6DF] text-sm text-[#26372B] focus:border-[#21834A] outline-none"
                   />
                 </div>
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                Email Address *
+              <label
+                htmlFor="reg-email"
+                className="block text-xs font-bold text-[#26372B] mb-1.5"
+              >
+                Email address *
               </label>
               <div className="relative">
-                <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <Mail className="w-4 h-4 text-[#526356] absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
+                  id="reg-email"
                   type="email"
                   required
                   autoComplete="email"
-                  placeholder="citizen@example.com"
+                  placeholder="you@example.com"
                   value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none"
+                  onChange={(e) =>
+                    setFormData({ ...formData, email: e.target.value })
+                  }
+                  className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-[#DCE6DF] text-sm text-[#26372B] focus:border-[#21834A] outline-none"
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label
+                  htmlFor="reg-password"
+                  className="block text-xs font-bold text-[#26372B] mb-1.5"
+                >
                   Password *
                 </label>
                 <div className="relative">
-                  <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <Lock className="w-4 h-4 text-[#526356] absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
+                    id="reg-password"
                     type={showPassword ? 'text' : 'password'}
                     required
-                    placeholder="Min. 6 characters"
+                    placeholder="At least 6 characters"
                     value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    className="w-full pl-9 pr-9 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none"
+                    onChange={(e) =>
+                      setFormData({ ...formData, password: e.target.value })
+                    }
+                    className="w-full pl-9 pr-9 py-2.5 rounded-xl border border-[#DCE6DF] text-sm text-[#26372B] focus:border-[#21834A] outline-none"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#526356] hover:text-[#26372B]"
                   >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {showPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
                   </button>
                 </div>
                 {formData.password && (
-                  <div className="mt-1 flex items-center gap-1.5 text-[10px]">
-                    <div className="w-12 h-1 rounded-full bg-slate-200 overflow-hidden">
-                      <div className={`h-full ${passStrength.color}`} style={{ width: `${passStrength.score * 33.3}%` }}></div>
+                  <div className="mt-1.5 flex items-center gap-2 text-xs">
+                    <div className="w-16 h-1.5 rounded-full bg-slate-200 overflow-hidden">
+                      <div
+                        className={`h-full ${passStrength.color}`}
+                        style={{ width: `${passStrength.score * 33.3}%` }}
+                      />
                     </div>
-                    <span className="text-slate-500">{passStrength.label}</span>
+                    <span className="text-[#526356]">{passStrength.label}</span>
                   </div>
                 )}
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Confirm Password *
+                <label
+                  htmlFor="reg-confirm-password"
+                  className="block text-xs font-bold text-[#26372B] mb-1.5"
+                >
+                  Confirm password *
                 </label>
                 <div className="relative">
-                  <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <Lock className="w-4 h-4 text-[#526356] absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
+                    id="reg-confirm-password"
                     type={showPassword ? 'text' : 'password'}
                     required
                     placeholder="Re-enter password"
                     value={formData.confirmPassword}
-                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                    className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none"
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        confirmPassword: e.target.value,
+                      })
+                    }
+                    className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-[#DCE6DF] text-sm text-[#26372B] focus:border-[#21834A] outline-none"
                   />
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Srinagar Ward *
+                <label
+                  htmlFor="reg-ward"
+                  className="block text-xs font-bold text-[#26372B] mb-1.5"
+                >
+                  Local Area / Ward *
                 </label>
                 <select
+                  id="reg-ward"
                   value={formData.wardName}
-                  onChange={(e) => setFormData({ ...formData, wardName: e.target.value })}
-                  className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs bg-white outline-none"
+                  onChange={(e) =>
+                    setFormData({ ...formData, wardName: e.target.value })
+                  }
+                  className="w-full px-3 py-2.5 rounded-xl border border-[#DCE6DF] text-sm text-[#26372B] bg-white outline-none focus:border-[#21834A]"
                 >
-                  {SRINAGAR_WARDS.map((w) => (
+                  {COMMUNITY_WARDS.map((w) => (
                     <option key={w} value={w}>
                       {w}
                     </option>
@@ -364,96 +385,116 @@ export default function Register() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Street Address / Area
+                <label
+                  htmlFor="reg-address"
+                  className="block text-xs font-bold text-[#26372B] mb-1.5"
+                >
+                  Street address
                 </label>
                 <input
+                  id="reg-address"
                   type="text"
-                  placeholder="e.g. Bund Road, Near Footbridge"
+                  placeholder="Street or neighbourhood"
                   value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs outline-none"
+                  onChange={(e) =>
+                    setFormData({ ...formData, address: e.target.value })
+                  }
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#DCE6DF] text-sm text-[#26372B] outline-none focus:border-[#21834A]"
                 />
               </div>
             </div>
 
-            {/* GPS Location Auto-Detection */}
-            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between">
-              <div className="text-xs text-slate-600">
-                <span className="font-semibold block text-[11px] text-slate-400 uppercase">Geographic Location</span>
-                <span>{formData.coordinates[0]}° E, {formData.coordinates[1]}° N</span>
+            {/* Optional GPS Location Detection */}
+            <div className="p-3.5 rounded-xl bg-[#F8FAF8] border border-[#DCE6DF] flex items-center justify-between gap-3">
+              <div className="text-xs text-[#526356]">
+                <span className="font-semibold text-[#26372B] block">
+                  Pickup & alert location
+                </span>
+                <span>
+                  {gpsSuccess
+                    ? 'Current GPS location saved'
+                    : 'Optional: use GPS for nearby collection alerts'}
+                </span>
               </div>
               <button
                 type="button"
                 onClick={handleGpsDetect}
                 disabled={detectingGps}
-                className="px-3 py-1.5 rounded-xl bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                className="px-3 py-2 rounded-xl bg-white border border-[#DCE6DF] hover:bg-[#E5F4E8] text-[#26372B] text-xs font-semibold flex items-center gap-1.5 transition-colors flex-shrink-0"
               >
-                <Navigation className="w-3.5 h-3.5 text-emerald-600" />
-                <span>{detectingGps ? 'Detecting...' : gpsSuccess ? 'GPS Locked' : 'Detect GPS'}</span>
+                <Navigation className="w-3.5 h-3.5 text-[#21834A]" />
+                <span>
+                  {detectingGps
+                    ? 'Locating...'
+                    : gpsSuccess
+                    ? 'Location Saved'
+                    : 'Use My Location'}
+                </span>
               </button>
             </div>
 
             <button
               type="submit"
               disabled={submitting}
-              className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-600/20 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full py-3.5 rounded-xl bg-[#21834A] hover:bg-[#1B6E3E] text-white text-sm font-semibold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              {submitting ? (
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-              ) : (
-                <KeyRound className="w-4 h-4" />
-              )}
-              <span>{submitting ? 'Generating Verification Code...' : 'Continue & Verify Email'}</span>
+              <KeyRound className="w-4 h-4" />
+              <span>
+                {submitting
+                  ? 'Sending verification code...'
+                  : 'Continue & Verify Email'}
+              </span>
             </button>
           </form>
         )}
 
         {/* STEP 2: VERIFY REGISTRATION OTP */}
         {step === 2 && (
-          <form className="space-y-4 animate-in fade-in duration-200" onSubmit={handleVerifySubmit}>
+          <form className="space-y-4" onSubmit={handleVerifySubmit}>
             <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="block text-xs font-bold text-slate-700">
-                  Enter 6-Digit Verification Code *
+              <div className="flex items-center justify-between mb-1.5">
+                <label
+                  htmlFor="reg-otp"
+                  className="block text-xs font-bold text-[#26372B]"
+                >
+                  Enter 6-digit verification code *
                 </label>
                 <button
                   type="button"
                   onClick={() => setStep(1)}
-                  className="text-[11px] text-emerald-700 font-semibold hover:underline"
+                  className="text-xs text-[#21834A] font-semibold hover:underline"
                 >
-                  Edit Details
+                  Edit details
                 </button>
               </div>
               <input
+                id="reg-otp"
                 type="text"
+                inputMode="numeric"
                 required
                 maxLength={6}
-                placeholder="e.g. 123456"
+                placeholder="6-digit code"
                 value={otp}
                 onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                className="w-full px-4 py-3 rounded-xl border border-slate-300 text-center font-mono text-lg tracking-widest font-bold focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none"
+                className="w-full px-4 py-3 rounded-xl border border-[#DCE6DF] text-center font-mono text-lg tracking-widest font-bold focus:border-[#21834A] outline-none"
               />
             </div>
 
             <button
               type="submit"
               disabled={submitting || otp.length < 6}
-              className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-600/20 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full py-3.5 rounded-xl bg-[#21834A] hover:bg-[#1B6E3E] text-white text-sm font-semibold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              {submitting ? (
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-              ) : (
-                <CheckCircle2 className="w-4 h-4" />
-              )}
-              <span>{submitting ? 'Activating Account...' : 'Verify & Activate Citizen Account'}</span>
+              <CheckCircle2 className="w-4 h-4" />
+              <span>
+                {submitting ? 'Creating account...' : 'Verify & Create Account'}
+              </span>
             </button>
 
-            {/* Resend Cooldown Section */}
-            <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
-              <span>Didn't receive code?</span>
+            <div className="flex items-center justify-between text-xs text-[#526356] pt-1">
+              <span>Didn’t receive the email?</span>
               {cooldown > 0 ? (
-                <span className="flex items-center gap-1 text-slate-400 font-semibold">
+                <span className="flex items-center gap-1 font-semibold">
                   <Clock className="w-3.5 h-3.5" />
                   <span>Resend in {cooldown}s</span>
                 </span>
@@ -462,20 +503,23 @@ export default function Register() {
                   type="button"
                   onClick={handleInitiateSubmit}
                   disabled={submitting}
-                  className="text-emerald-700 font-bold hover:underline"
+                  className="text-[#21834A] font-bold hover:underline"
                 >
-                  Resend Code
+                  Resend code
                 </button>
               )}
             </div>
           </form>
         )}
 
-        <div className="text-center pt-2 border-t border-slate-100">
-          <p className="text-xs text-slate-500">
-            Already registered?{' '}
-            <Link to="/login" className="font-bold text-emerald-700 hover:underline">
-              Sign In
+        <div className="text-center pt-3 border-t border-[#DCE6DF]">
+          <p className="text-xs sm:text-sm text-[#526356]">
+            Already have an account?{' '}
+            <Link
+              to="/login"
+              className="font-bold text-[#21834A] hover:underline"
+            >
+              Sign in
             </Link>
           </p>
         </div>

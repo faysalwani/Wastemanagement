@@ -21,7 +21,7 @@ describe('System Health & Scaffolding Test', () => {
     const res = await request(app).get('/');
     expect(res.statusCode).toEqual(200);
     expect(res.body.success).toBe(true);
-    expect(res.body.message).toContain('EcoCycle Srinagar');
+    expect(res.body.message).toContain('Clear Waste');
   });
 
   it('GET /api/v1 should return API Gateway welcome and docs paths', async () => {

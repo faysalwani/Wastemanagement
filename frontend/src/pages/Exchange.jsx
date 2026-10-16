@@ -222,15 +222,15 @@ export default function Exchange() {
       {/* Header Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-800 text-xs font-semibold mb-2">
-            <Repeat className="w-3.5 h-3.5 text-blue-600" />
-            Circular Economy Marketplace
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#E5F4E8] border border-[#BCE0C6] text-[#1A693B] text-xs font-semibold mb-2">
+            <Repeat className="w-3.5 h-3.5 text-[#21834A]" />
+            Community Reuse & Sharing
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
-            P2P Resource & Bio-Waste Exchange
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#26372B] tracking-tight">
+            Reuse & Share Materials
           </h1>
-          <p className="text-xs sm:text-sm text-slate-600 mt-1">
-            Connect directly with Srinagar gardeners, composters, and recyclers to divert clean resources from landfills.
+          <p className="text-sm text-[#526356] mt-1">
+            Share clean cardboard boxes, glass jars, compostable waste, or reusable materials with neighbors and local gardeners.
           </p>
         </div>
 
@@ -240,10 +240,10 @@ export default function Exchange() {
               setActionError(null);
               setShowCreateModal(true);
             }}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-eco-600 hover:bg-eco-700 text-white text-xs font-semibold shadow-md shadow-eco-600/20 transition-all self-start sm:self-auto"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#21834A] hover:bg-[#1A693B] text-white text-xs sm:text-sm font-bold shadow-xs transition-colors self-start sm:self-auto"
           >
             <Plus className="w-4 h-4" />
-            <span>List a Resource</span>
+            <span>Share an Item</span>
           </button>
         )}
       </div>

@@ -1,99 +1,68 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Circle, Polyline } from 'react-leaflet';
+import React, { useState, useEffect } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, Circle } from 'react-leaflet';
 import L from 'leaflet';
-import { 
-  Truck, 
-  Navigation, 
-  MapPin, 
-  CheckCircle2, 
-  Clock, 
-  Calendar, 
-  AlertCircle, 
-  Fuel, 
-  Play, 
-  Square, 
+import {
+  Truck,
+  Navigation,
+  MapPin,
+  CheckCircle2,
+  Clock,
+  Calendar,
+  AlertCircle,
   BellRing,
-  RotateCcw,
-  Sparkles,
-  ShieldCheck,
-  Radio,
-  Layers,
   Send,
-  Trash2,
+  Plus,
   CalendarDays,
-  Plus
+  ListChecks,
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 
-// Safe Leaflet Icons
 const createTruckIcon = () => {
   try {
     return L.divIcon({
       className: 'custom-truck-marker',
       html: `<div style="
-        background-color: #0284c7;
-        width: 32px;
-        height: 32px;
-        border-radius: 8px;
+        background-color: #21834A;
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
         border: 2px solid white;
-        box-shadow: 0 3px 8px rgba(0,0,0,0.4);
+        box-shadow: 0 3px 8px rgba(0,0,0,0.3);
         display: flex;
         align-items: center;
         justify-content: center;
         color: white;
         font-size: 16px;
       ">🚛</div>`,
-      iconSize: [32, 32],
-      iconAnchor: [16, 16],
+      iconSize: [34, 34],
+      iconAnchor: [17, 17],
     });
   } catch {
     return null;
   }
 };
 
-const createStopIcon = (seq, priority) => {
-  try {
-    const bg = priority === 'CRITICAL' ? '#ef4444' : '#10b981';
-    return L.divIcon({
-      className: 'custom-stop-marker',
-      html: `<div style="
-        background-color: ${bg};
-        width: 26px;
-        height: 26px;
-        border-radius: 50%;
-        border: 2px solid white;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-weight: bold;
-        font-size: 11px;
-      ">${seq}</div>`,
-      iconSize: [26, 26],
-      iconAnchor: [13, 13],
-    });
-  } catch {
-    return null;
-  }
+const STATUS_LABELS = {
+  REQUESTED: { label: 'Pending Review', style: 'bg-amber-50 text-amber-800 border-amber-200' },
+  ASSIGNED: { label: 'Driver Assigned', style: 'bg-sky-50 text-sky-800 border-sky-200' },
+  IN_PROGRESS: { label: 'In Progress', style: 'bg-sky-100 text-sky-900 border-sky-300' },
+  COMPLETED: { label: 'Completed', style: 'bg-[#E5F4E8] text-[#1A693B] border-[#BCE0C6]' },
+  CANCELLED: { label: 'Cancelled', style: 'bg-slate-100 text-slate-600 border-slate-200' },
+  REJECTED: { label: 'Declined', style: 'bg-rose-50 text-rose-800 border-rose-200' },
 };
 
 export default function Collection() {
   const { user } = useAuth() || {};
   const { socket } = useSocket() || {};
 
-  const [routeData, setRouteData] = useState(null);
   const [fleet, setFleet] = useState([]);
   const [schedules, setSchedules] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('RADAR'); // RADAR, CALENDAR, REQUEST, MY_REQUESTS, DRIVER
+  const [activeTab, setActiveTab] = useState('REQUEST'); // REQUEST, MY_REQUESTS, SCHEDULE, MAP
   const [proximityAlert, setProximityAlert] = useState(null);
-
-  // Driver GPS Tracking State
-  const [isTracking, setIsTracking] = useState(false);
-  const trackingIntervalRef = useRef(null);
 
   // Citizen Collection Request State
   const [requestType, setRequestType] = useState('ON_DEMAND'); // ON_DEMAND or EVENT
@@ -114,16 +83,14 @@ export default function Collection() {
   const [myRequests, setMyRequests] = useState([]);
   const [loadingMyRequests, setLoadingMyRequests] = useState(false);
 
-  const fetchRouteAndFleet = async () => {
+  const fetchFleetAndSchedules = async () => {
     setLoading(true);
     try {
-      const [routeRes, fleetRes, schedRes] = await Promise.all([
-        api.get('/routes/optimize').catch(() => ({ data: { success: false } })),
+      const [fleetRes, schedRes] = await Promise.all([
         api.get('/tracking/fleet').catch(() => ({ data: { success: false } })),
         api.get('/collection-schedules').catch(() => ({ data: { success: false } })),
       ]);
 
-      if (routeRes.data?.success) setRouteData(routeRes.data);
       if (fleetRes.data?.success && Array.isArray(fleetRes.data.data)) {
         setFleet(fleetRes.data.data);
       }
@@ -153,11 +120,11 @@ export default function Collection() {
   };
 
   useEffect(() => {
-    fetchRouteAndFleet();
+    fetchFleetAndSchedules();
     fetchMyRequests();
-  }, []);
+  }, [user]);
 
-  // Filter valid fleet vehicles with valid coordinates [lng, lat]
+  // Filter valid fleet vehicles with real coordinates [lng, lat]
   const validVehicles = (Array.isArray(fleet) ? fleet : []).filter((v) => {
     const coords = v?.currentLocation?.coordinates;
     return (
@@ -170,7 +137,6 @@ export default function Collection() {
     );
   });
 
-  // Calculate proximity to citizen's coordinates
   const userCoords =
     user?.location?.coordinates &&
     Array.isArray(user.location.coordinates) &&
@@ -184,7 +150,7 @@ export default function Collection() {
     const [lon2, lat2] = coord2;
     if (isNaN(lon1) || isNaN(lat1) || isNaN(lon2) || isNaN(lat2)) return Infinity;
 
-    const R = 6371e3; // Earth radius in metres
+    const R = 6371e3;
     const phi1 = (lat1 * Math.PI) / 180;
     const phi2 = (lat2 * Math.PI) / 180;
     const deltaPhi = ((lat2 - lat1) * Math.PI) / 180;
@@ -247,50 +213,13 @@ export default function Collection() {
     };
   }, [socket]);
 
-  // Clean Driver Simulation/Broadcast
-  const startDriverTracking = () => {
-    setIsTracking(true);
-    let step = 0;
-    const baseCoords = [74.7973, 34.0837];
-
-    trackingIntervalRef.current = setInterval(async () => {
-      step += 1;
-      const latOffset = Math.sin(step * 0.1) * 0.005;
-      const lngOffset = Math.cos(step * 0.1) * 0.005;
-      const simCoords = [baseCoords[0] + lngOffset, baseCoords[1] + latOffset];
-
-      try {
-        await api.post('/tracking/update', {
-          vehicleId: 'JK-01-WM-2026',
-          coordinates: simCoords,
-          speedKmh: 24.5,
-          heading: (step * 15) % 360,
-          batteryPercent: 92,
-        });
-      } catch {
-        // Ignore broadcast drops
-      }
-    }, 4000);
-  };
-
-  const stopDriverTracking = () => {
-    setIsTracking(false);
-    if (trackingIntervalRef.current) {
-      clearInterval(trackingIntervalRef.current);
-      trackingIntervalRef.current = null;
-    }
-  };
-
-  useEffect(() => {
-    return () => {
-      if (trackingIntervalRef.current) clearInterval(trackingIntervalRef.current);
-    };
-  }, []);
-
   const handleCreateRequest = async (e) => {
     e.preventDefault();
     if (!user) {
-      alert('Please sign in to submit a collection request.');
+      setRequestFeedback({
+        type: 'error',
+        message: 'Please sign in to submit a pickup request.',
+      });
       return;
     }
 
@@ -311,7 +240,7 @@ export default function Collection() {
       if (res.data.success) {
         setRequestFeedback({
           type: 'success',
-          message: `${requestType === 'EVENT' ? 'Special Event' : 'On-Demand'} collection request registered successfully!`,
+          message: `Your ${requestType === 'EVENT' ? 'event' : 'household'} pickup request has been submitted!`,
         });
         setDescription('');
         if (requestType === 'EVENT') {
@@ -322,7 +251,7 @@ export default function Collection() {
     } catch (err) {
       setRequestFeedback({
         type: 'error',
-        message: err.response?.data?.error?.message || 'Failed to submit collection request.',
+        message: err.response?.data?.error?.message || 'Could not submit your pickup request. Please try again.',
       });
     } finally {
       setSubmittingRequest(false);
@@ -330,40 +259,30 @@ export default function Collection() {
   };
 
   const handleCancelRequest = async (requestId) => {
-    if (!window.confirm('Are you sure you want to cancel this collection request?')) return;
+    if (!window.confirm('Cancel this pickup request?')) return;
     try {
       await api.delete(`/collection-requests/${requestId}`);
       fetchMyRequests();
     } catch (err) {
-      alert(err.response?.data?.error?.message || 'Failed to cancel request.');
+      alert(err.response?.data?.error?.message || 'Could not cancel request.');
     }
   };
 
   const truckIcon = createTruckIcon();
 
-  const safeManifest = (routeData?.manifest || []).filter(
-    (m) =>
-      m &&
-      Array.isArray(m.coordinates) &&
-      m.coordinates.length >= 2 &&
-      typeof m.coordinates[0] === 'number' &&
-      typeof m.coordinates[1] === 'number' &&
-      !isNaN(m.coordinates[0]) &&
-      !isNaN(m.coordinates[1])
-  );
-
-  const polylineCoords = safeManifest.map((m) => [m.coordinates[1], m.coordinates[0]]);
-
   return (
-    <div className="max-w-7xl mx-auto px-4 py-10 space-y-8">
-      {/* 500m Audio-Visual Proximity Notification Banner */}
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10 space-y-8">
+      {/* 500m Proximity Notification Banner */}
       {proximityAlert && (
-        <div className="p-4 rounded-2xl bg-amber-500 text-white shadow-lg flex items-center justify-between gap-4 animate-bounce">
+        <div
+          role="alert"
+          className="p-4 rounded-2xl bg-[#21834A] text-white shadow-md flex items-center justify-between gap-4"
+        >
           <div className="flex items-center gap-3">
-            <BellRing className="w-6 h-6 flex-shrink-0 animate-spin" />
+            <BellRing className="w-6 h-6 flex-shrink-0" />
             <div>
-              <div className="text-sm font-extrabold">{proximityAlert.message}</div>
-              <span className="text-xs text-amber-100">
+              <div className="text-sm font-bold">{proximityAlert.message}</div>
+              <span className="text-xs text-[#E5F4E8]">
                 Driver: {proximityAlert.driverName} • Vehicle: {proximityAlert.plateNumber}
               </span>
             </div>
@@ -371,156 +290,560 @@ export default function Collection() {
           <button
             type="button"
             onClick={() => setProximityAlert(null)}
-            className="px-3 py-1 bg-white/20 hover:bg-white/30 rounded-lg text-xs font-bold"
+            className="px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-xl text-xs font-bold"
           >
-            Acknowledge
+            Dismiss
           </button>
         </div>
       )}
 
-      {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-50 border border-sky-200 text-sky-800 text-xs font-semibold mb-2">
-            <Truck className="w-3.5 h-3.5 text-sky-600" />
-            Municipal Fleet Tracking & Ward Logistics
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-            Municipal Collection & Vehicle Radar
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#26372B] tracking-tight">
+            Waste Pickup & Schedules
           </h1>
-          <p className="text-xs sm:text-sm text-slate-600 mt-1">
-            Track live collection trucks, review ward collection calendars, and request on-demand waste pickups.
+          <p className="text-sm sm:text-base text-[#526356] mt-1">
+            Schedule a doorstep pickup, check your local collection days, or see active collection trucks.
           </p>
         </div>
 
-        {/* Tab Switcher */}
-        <div className="flex flex-wrap p-1 rounded-2xl bg-slate-100 border border-slate-200 text-xs font-bold gap-1 self-start sm:self-auto">
+        {/* Navigation Tabs */}
+        <div
+          role="tablist"
+          aria-label="Pickup and schedule views"
+          className="flex flex-wrap p-1.5 rounded-2xl bg-white border border-[#DCE6DF] text-xs sm:text-sm font-semibold gap-1 self-start"
+        >
           <button
             type="button"
-            onClick={() => setActiveTab('RADAR')}
-            className={`px-3.5 py-2 rounded-xl transition-all ${
-              activeTab === 'RADAR'
-                ? 'bg-white text-slate-900 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Live Radar
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('CALENDAR')}
-            className={`px-3.5 py-2 rounded-xl transition-all ${
-              activeTab === 'CALENDAR'
-                ? 'bg-white text-slate-900 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Collection Calendar
-          </button>
-
-          <button
-            type="button"
+            role="tab"
+            aria-selected={activeTab === 'REQUEST'}
             onClick={() => setActiveTab('REQUEST')}
-            className={`px-3.5 py-2 rounded-xl transition-all ${
+            className={`px-3.5 py-2 rounded-xl transition-colors flex items-center gap-1.5 ${
               activeTab === 'REQUEST'
-                ? 'bg-white text-slate-900 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-[#21834A] text-white shadow-xs'
+                : 'text-[#526356] hover:text-[#26372B] hover:bg-[#F8FAF8]'
             }`}
           >
-            Request Pickup
+            <Plus className="w-4 h-4" />
+            <span>Request Pickup</span>
           </button>
 
           <button
             type="button"
+            role="tab"
+            aria-selected={activeTab === 'MY_REQUESTS'}
             onClick={() => {
               setActiveTab('MY_REQUESTS');
               fetchMyRequests();
             }}
-            className={`px-3.5 py-2 rounded-xl transition-all ${
+            className={`px-3.5 py-2 rounded-xl transition-colors flex items-center gap-1.5 ${
               activeTab === 'MY_REQUESTS'
-                ? 'bg-white text-slate-900 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-[#21834A] text-white shadow-xs'
+                : 'text-[#526356] hover:text-[#26372B] hover:bg-[#F8FAF8]'
             }`}
           >
-            My Requests ({myRequests.length})
+            <ListChecks className="w-4 h-4" />
+            <span>My Requests ({myRequests.length})</span>
           </button>
 
-          {user && (user.role === 'DRIVER' || user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') && (
-            <button
-              type="button"
-              onClick={() => setActiveTab('DRIVER')}
-              className={`px-3.5 py-2 rounded-xl transition-all ${
-                activeTab === 'DRIVER'
-                  ? 'bg-slate-900 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Driver Portal
-            </button>
-          )}
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'SCHEDULE'}
+            onClick={() => setActiveTab('SCHEDULE')}
+            className={`px-3.5 py-2 rounded-xl transition-colors flex items-center gap-1.5 ${
+              activeTab === 'SCHEDULE'
+                ? 'bg-[#21834A] text-white shadow-xs'
+                : 'text-[#526356] hover:text-[#26372B] hover:bg-[#F8FAF8]'
+            }`}
+          >
+            <Calendar className="w-4 h-4" />
+            <span>Schedule</span>
+          </button>
+
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'MAP'}
+            onClick={() => setActiveTab('MAP')}
+            className={`px-3.5 py-2 rounded-xl transition-colors flex items-center gap-1.5 ${
+              activeTab === 'MAP'
+                ? 'bg-[#21834A] text-white shadow-xs'
+                : 'text-[#526356] hover:text-[#26372B] hover:bg-[#F8FAF8]'
+            }`}
+          >
+            <Navigation className="w-4 h-4" />
+            <span>Live Map</span>
+          </button>
         </div>
       </div>
 
-      {/* TAB 1: Live Radar */}
-      {activeTab === 'RADAR' && (
-        <div className="space-y-8">
-          {/* 500m Proximity Radar Banner */}
-          <div className={`p-5 rounded-3xl border shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors ${
-            nearestVehicleDist <= 500
-              ? 'bg-emerald-50 border-emerald-300 text-emerald-950'
-              : 'bg-white border-slate-200 text-slate-800'
-          }`}>
+      {/* TAB 1: Request Pickup */}
+      {activeTab === 'REQUEST' && (
+        <div className="max-w-2xl bg-white p-6 sm:p-8 rounded-3xl border border-[#DCE6DF] shadow-xs space-y-6">
+          <div className="pb-4 border-b border-[#DCE6DF]">
+            <h2 className="text-lg sm:text-xl font-bold text-[#26372B] flex items-center gap-2.5">
+              <Truck className="w-5 h-5 text-[#21834A]" />
+              <span>Book a Waste Pickup</span>
+            </h2>
+            <p className="text-sm text-[#526356] mt-1">
+              Request a pickup for extra household recyclables, bulk items, or a special event.
+            </p>
+          </div>
+
+          {!user && (
+            <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-sm text-amber-900 flex items-center justify-between gap-4">
+              <span>Please sign in to submit and track your pickup requests.</span>
+              <Link
+                to="/login"
+                className="px-4 py-2 rounded-xl bg-[#21834A] text-white text-xs font-bold whitespace-nowrap hover:bg-[#1A693B]"
+              >
+                Sign In
+              </Link>
+            </div>
+          )}
+
+          {requestFeedback && (
+            <div
+              role="status"
+              className={`p-4 rounded-2xl text-sm font-medium flex items-center justify-between gap-3 ${
+                requestFeedback.type === 'success'
+                  ? 'bg-[#E5F4E8] text-[#1A693B] border border-[#BCE0C6]'
+                  : 'bg-rose-50 text-rose-900 border border-rose-200'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                {requestFeedback.type === 'success' ? (
+                  <CheckCircle2 className="w-5 h-5 text-[#21834A] flex-shrink-0" />
+                ) : (
+                  <AlertCircle className="w-5 h-5 text-rose-600 flex-shrink-0" />
+                )}
+                <span>{requestFeedback.message}</span>
+              </div>
+              {requestFeedback.type === 'success' && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('MY_REQUESTS')}
+                  className="text-xs font-bold underline whitespace-nowrap"
+                >
+                  View status
+                </button>
+              )}
+            </div>
+          )}
+
+          <form onSubmit={handleCreateRequest} className="space-y-5">
+            {/* Request Type Switcher */}
+            <div>
+              <span className="block text-sm font-semibold text-[#26372B] mb-2">
+                What kind of pickup do you need?
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setRequestType('ON_DEMAND')}
+                  className={`p-4 rounded-2xl border text-left transition-all ${
+                    requestType === 'ON_DEMAND'
+                      ? 'bg-[#E5F4E8]/70 border-[#21834A] text-[#26372B] ring-2 ring-[#21834A]/20'
+                      : 'bg-white border-[#DCE6DF] text-[#526356] hover:bg-[#F8FAF8]'
+                  }`}
+                >
+                  <div className="text-sm font-bold text-[#26372B]">Household Pickup</div>
+                  <span className="text-xs text-[#526356] mt-0.5 block">
+                    Extra recyclables, organic waste, or bulky items
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setRequestType('EVENT')}
+                  className={`p-4 rounded-2xl border text-left transition-all ${
+                    requestType === 'EVENT'
+                      ? 'bg-[#E5F4E8]/70 border-[#21834A] text-[#26372B] ring-2 ring-[#21834A]/20'
+                      : 'bg-white border-[#DCE6DF] text-[#526356] hover:bg-[#F8FAF8]'
+                  }`}
+                >
+                  <div className="text-sm font-bold text-[#26372B]">Special Event Pickup</div>
+                  <span className="text-xs text-[#526356] mt-0.5 block">
+                    Weddings, community gatherings, or local festivals
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* Waste Type & Weight */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="sm:col-span-2">
+                <label htmlFor="pickup-category" className="block text-sm font-semibold text-[#26372B] mb-1.5">
+                  Type of waste
+                </label>
+                <select
+                  id="pickup-category"
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#DCE6DF] text-sm text-[#26372B] bg-white focus:outline-none focus:border-[#21834A]"
+                >
+                  <option value="RECYCLABLE">Dry Recyclables (Paper, Cardboard, Plastic, Metal)</option>
+                  <option value="ORGANIC">Food & Garden Waste</option>
+                  <option value="BULK_RESIDUAL">Bulky Household Items or General Waste</option>
+                  <option value="HAZARDOUS">Batteries, E-Waste, or Household Chemicals</option>
+                  <option value="MIXED">Mixed Event / Household Waste</option>
+                </select>
+              </div>
+
+              <div>
+                <label htmlFor="pickup-weight" className="block text-sm font-semibold text-[#26372B] mb-1.5">
+                  Approx. weight (kg)
+                </label>
+                <input
+                  id="pickup-weight"
+                  type="number"
+                  min="1"
+                  max="1000"
+                  required
+                  value={estimatedVolumeKg}
+                  onChange={(e) => setEstimatedVolumeKg(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#DCE6DF] text-sm text-[#26372B] bg-white focus:outline-none focus:border-[#21834A]"
+                  placeholder="e.g. 10"
+                />
+              </div>
+            </div>
+
+            {/* Event Details if EVENT */}
+            {requestType === 'EVENT' && (
+              <div className="p-4 rounded-2xl bg-[#F8FAF8] border border-[#DCE6DF] space-y-3">
+                <div className="flex items-center gap-2 text-sm font-bold text-[#26372B]">
+                  <CalendarDays className="w-4 h-4 text-[#21834A]" />
+                  <span>Event Information</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label htmlFor="event-name" className="block text-xs font-semibold text-[#526356] mb-1">
+                      Event name
+                    </label>
+                    <input
+                      id="event-name"
+                      type="text"
+                      required
+                      placeholder="e.g. Family Wedding"
+                      value={eventDetails.eventName}
+                      onChange={(e) => setEventDetails({ ...eventDetails, eventName: e.target.value })}
+                      className="w-full px-3 py-2 rounded-xl border border-[#DCE6DF] text-sm bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="event-date" className="block text-xs font-semibold text-[#526356] mb-1">
+                      Event date
+                    </label>
+                    <input
+                      id="event-date"
+                      type="date"
+                      required
+                      value={eventDetails.eventDate}
+                      onChange={(e) => setEventDetails({ ...eventDetails, eventDate: e.target.value })}
+                      className="w-full px-3 py-2 rounded-xl border border-[#DCE6DF] text-sm bg-white"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label htmlFor="event-guests" className="block text-xs font-semibold text-[#526356] mb-1">
+                    Estimated number of guests (optional)
+                  </label>
+                  <input
+                    id="event-guests"
+                    type="number"
+                    placeholder="e.g. 200"
+                    value={eventDetails.expectedAttendees}
+                    onChange={(e) => setEventDetails({ ...eventDetails, expectedAttendees: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-[#DCE6DF] text-sm bg-white"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Address & Area */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="pickup-address" className="block text-sm font-semibold text-[#26372B] mb-1.5">
+                  Pickup address
+                </label>
+                <input
+                  id="pickup-address"
+                  type="text"
+                  required
+                  placeholder="House number, street, landmark"
+                  value={pickupAddress}
+                  onChange={(e) => setPickupAddress(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#DCE6DF] text-sm text-[#26372B] bg-white focus:outline-none focus:border-[#21834A]"
+                />
+              </div>
+              <div>
+                <label htmlFor="pickup-ward" className="block text-sm font-semibold text-[#26372B] mb-1.5">
+                  Neighborhood / Ward
+                </label>
+                <input
+                  id="pickup-ward"
+                  type="text"
+                  required
+                  placeholder="e.g. Rajbagh"
+                  value={wardName}
+                  onChange={(e) => setWardName(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#DCE6DF] text-sm text-[#26372B] bg-white focus:outline-none focus:border-[#21834A]"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="pickup-notes" className="block text-sm font-semibold text-[#26372B] mb-1.5">
+                Pickup notes (optional)
+              </label>
+              <textarea
+                id="pickup-notes"
+                rows={2}
+                placeholder="Any helpful directions for the driver (e.g., bags placed near front gate)..."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-[#DCE6DF] text-sm text-[#26372B] bg-white focus:outline-none focus:border-[#21834A]"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={submittingRequest || !user}
+              className="w-full py-3.5 px-5 rounded-xl bg-[#21834A] hover:bg-[#1A693B] text-white text-sm font-bold shadow-xs transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              <Send className="w-4 h-4" />
+              <span>{submittingRequest ? 'Submitting request...' : 'Request Pickup'}</span>
+            </button>
+          </form>
+        </div>
+      )}
+
+      {/* TAB 2: My Requests */}
+      {activeTab === 'MY_REQUESTS' && (
+        <div className="space-y-4">
+          <div className="p-5 rounded-2xl bg-white border border-[#DCE6DF] flex items-center justify-between">
+            <div>
+              <h2 className="font-bold text-base text-[#26372B]">My Pickup Requests</h2>
+              <p className="text-xs sm:text-sm text-[#526356]">
+                View the status of your requested pickups and assigned collection trucks.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setActiveTab('REQUEST')}
+              className="px-4 py-2 rounded-xl bg-[#21834A] text-white text-xs sm:text-sm font-bold hover:bg-[#1A693B] transition-colors flex items-center gap-1.5"
+            >
+              <Plus className="w-4 h-4" />
+              <span>New Request</span>
+            </button>
+          </div>
+
+          {loadingMyRequests ? (
+            <div className="py-16 text-center text-sm text-[#526356] bg-white rounded-2xl border border-[#DCE6DF]">
+              Loading your pickup requests...
+            </div>
+          ) : myRequests.length === 0 ? (
+            <div className="p-12 rounded-2xl bg-white border border-[#DCE6DF] text-center space-y-3">
+              <Truck className="w-10 h-10 text-[#526356]/50 mx-auto" />
+              <h3 className="text-base font-bold text-[#26372B]">No pickup requests yet</h3>
+              <p className="text-sm text-[#526356] max-w-md mx-auto">
+                When you book a pickup for extra household waste or a special event, its status will appear here.
+              </p>
+              <button
+                type="button"
+                onClick={() => setActiveTab('REQUEST')}
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#21834A] text-white text-sm font-bold hover:bg-[#1A693B]"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Book a Pickup</span>
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {myRequests.map((req) => {
+                const statusInfo = STATUS_LABELS[req.status] || {
+                  label: req.status,
+                  style: 'bg-slate-100 text-slate-700 border-slate-200',
+                };
+                return (
+                  <div
+                    key={req._id}
+                    className="p-5 rounded-2xl bg-white border border-[#DCE6DF] flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                  >
+                    <div className="space-y-1.5">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-bold text-base text-[#26372B]">
+                          {req.estimatedVolumeKg} kg • {(req.category || 'RECYCLABLE').replace(/_/g, ' ')}
+                        </span>
+                        <span
+                          className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${statusInfo.style}`}
+                        >
+                          {statusInfo.label}
+                        </span>
+                        <span className="px-2.5 py-0.5 rounded-lg bg-[#F8FAF8] border border-[#DCE6DF] text-[#526356] text-xs font-semibold">
+                          {req.requestType === 'EVENT' ? 'Event Pickup' : 'Household Pickup'}
+                        </span>
+                      </div>
+
+                      <div className="text-sm text-[#526356] flex items-center gap-1.5">
+                        <MapPin className="w-4 h-4 text-[#21834A] flex-shrink-0" />
+                        <span>
+                          {req.pickupAddress}, {req.wardName}
+                        </span>
+                      </div>
+
+                      {req.assignedDriverId && (
+                        <div className="text-xs text-[#1A693B] bg-[#E5F4E8] px-3 py-1 rounded-lg inline-block font-semibold">
+                          Driver: {req.assignedDriverId?.name || 'Assigned Driver'} • Truck:{' '}
+                          {req.assignedVehicleId?.plateNumber || 'Assigned'}
+                        </div>
+                      )}
+
+                      <div className="text-xs text-[#526356]">
+                        Requested on{' '}
+                        {new Date(req.createdAt).toLocaleDateString([], {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                        })}
+                      </div>
+                    </div>
+
+                    {req.status === 'REQUESTED' && (
+                      <button
+                        type="button"
+                        onClick={() => handleCancelRequest(req._id)}
+                        className="px-3.5 py-2 rounded-xl border border-rose-200 text-rose-700 hover:bg-rose-50 text-xs font-bold transition-colors self-start sm:self-center"
+                      >
+                        Cancel Request
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB 3: Collection Schedule */}
+      {activeTab === 'SCHEDULE' && (
+        <div className="space-y-6">
+          <div className="p-5 rounded-2xl bg-white border border-[#DCE6DF] flex items-center justify-between">
+            <div>
+              <h2 className="font-bold text-base text-[#26372B]">Regular Collection Schedule</h2>
+              <p className="text-xs sm:text-sm text-[#526356]">
+                Scheduled neighborhood collection days and hours.
+              </p>
+            </div>
+            <span className="text-xs font-bold text-[#1A693B] bg-[#E5F4E8] px-3 py-1 rounded-full">
+              {schedules.length} Areas Listed
+            </span>
+          </div>
+
+          {loading ? (
+            <div className="py-12 text-center text-sm text-[#526356] bg-white rounded-2xl border border-[#DCE6DF]">
+              Loading collection schedules...
+            </div>
+          ) : schedules.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {schedules.map((sch) => (
+                <div
+                  key={sch._id}
+                  className="p-5 bg-white rounded-2xl border border-[#DCE6DF] space-y-3"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="font-bold text-base text-[#26372B]">{sch.wardName}</div>
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#E5F4E8] text-[#1A693B]">
+                      {(sch.wasteType || 'MIXED').replace(/_/g, ' ')}
+                    </span>
+                  </div>
+                  <p className="text-sm text-[#26372B] font-medium">
+                    {sch.daysOfWeek?.join(' • ') || 'Daily Collection'}
+                  </p>
+                  <div className="flex items-center gap-1.5 text-xs text-[#526356]">
+                    <Clock className="w-4 h-4 text-[#21834A]" />
+                    <span>
+                      {sch.startTime || '07:00 AM'} – {sch.endTime || '11:00 AM'}
+                    </span>
+                  </div>
+                  {sch.vehicleId?.plateNumber && (
+                    <div className="pt-2 border-t border-[#DCE6DF] text-xs text-[#526356]">
+                      Assigned Truck:{' '}
+                      <span className="font-semibold text-[#26372B]">{sch.vehicleId.plateNumber}</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="p-12 text-center text-sm text-[#526356] bg-white rounded-2xl border border-[#DCE6DF]">
+              No regular schedules have been posted for your area yet.
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB 4: Live Map */}
+      {activeTab === 'MAP' && (
+        <div className="space-y-6">
+          {/* Proximity Banner */}
+          <div
+            className={`p-5 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+              nearestVehicleDist <= 500
+                ? 'bg-[#E5F4E8] border-[#21834A] text-[#26372B]'
+                : 'bg-white border-[#DCE6DF] text-[#26372B]'
+            }`}
+          >
             <div className="flex items-start sm:items-center gap-3">
-              <div className={`w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 ${
-                nearestVehicleDist <= 500
-                  ? 'bg-emerald-600 text-white shadow-md'
-                  : 'bg-slate-100 text-slate-500'
-              }`}>
+              <div
+                className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                  nearestVehicleDist <= 500
+                    ? 'bg-[#21834A] text-white'
+                    : 'bg-[#F8FAF8] text-[#526356] border border-[#DCE6DF]'
+                }`}
+              >
                 <Navigation className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="font-extrabold text-sm">
+                <h2 className="font-bold text-sm sm:text-base">
                   {nearestVehicleDist <= 500
-                    ? `Collection Vehicle Approaching! (~${nearestVehicleDist}m away)`
-                    : 'No collection vehicle is currently nearby.'}
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
+                    ? `A collection truck is nearby (~${nearestVehicleDist}m away)`
+                    : validVehicles.length > 0
+                    ? 'Active collection trucks on route'
+                    : 'No collection trucks are actively broadcasting right now'}
+                </h2>
+                <p className="text-xs sm:text-sm text-[#526356] mt-0.5">
                   {nearestVehicleDist <= 500
-                    ? `Municipal truck ${nearestVehicle?.plateNumber || ''} is within 500 meters of your registered area. Please keep segregated dry/wet bins ready.`
+                    ? `Truck ${nearestVehicle?.plateNumber || ''} is within 500 meters of your location.`
                     : nearestVehicleDist < Infinity
-                    ? `Nearest active municipal vehicle is approx. ${(nearestVehicleDist / 1000).toFixed(1)} km away.`
-                    : 'No collection vehicles are actively broadcasting GPS coordinates at this moment.'}
+                    ? `The nearest active collection truck is approximately ${(nearestVehicleDist / 1000).toFixed(1)} km away.`
+                    : 'Live vehicle locations appear here automatically when drivers start their collection shift.'}
                 </p>
               </div>
             </div>
 
-            <div className="text-right flex-shrink-0">
-              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${
-                nearestVehicleDist <= 500
-                  ? 'bg-emerald-200/80 text-emerald-900'
-                  : 'bg-slate-100 text-slate-600'
-              }`}>
-                <span className={`w-2 h-2 rounded-full ${nearestVehicleDist <= 500 ? 'bg-emerald-600 animate-ping' : 'bg-slate-400'}`} />
-                <span>{nearestVehicleDist <= 500 ? '500m In-Range Alert' : 'Radar Standby'}</span>
-              </span>
-            </div>
+            <span
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold self-start sm:self-center ${
+                validVehicles.length > 0
+                  ? 'bg-[#E5F4E8] text-[#1A693B]'
+                  : 'bg-[#F8FAF8] text-[#526356] border border-[#DCE6DF]'
+              }`}
+            >
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  validVehicles.length > 0 ? 'bg-[#21834A]' : 'bg-slate-400'
+                }`}
+              />
+              <span>{validVehicles.length} Active Trucks</span>
+            </span>
           </div>
 
-          {/* Live Vehicle Radar Map */}
-          <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-xs space-y-4">
-            <div className="flex items-center justify-between px-2">
-              <h2 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                <Navigation className="w-4 h-4 text-sky-600" />
-                <span>Live Municipal Vehicle Radar (Srinagar)</span>
-              </h2>
-              <div className="flex items-center gap-2 text-xs text-slate-500">
-                <span className="w-2.5 h-2.5 rounded-full bg-sky-500 animate-ping" />
-                <span>Active Tracking Trucks ({validVehicles.length})</span>
-              </div>
-            </div>
-
-            <div className="h-[460px] rounded-2xl overflow-hidden border border-slate-200 relative z-10">
+          {/* Map */}
+          <div className="bg-white p-4 rounded-2xl border border-[#DCE6DF] space-y-3">
+            <div className="h-[420px] rounded-xl overflow-hidden border border-[#DCE6DF] relative z-10">
               <MapContainer
                 center={[34.0837, 74.7973]}
                 zoom={12}
@@ -542,13 +865,14 @@ export default function Collection() {
                     >
                       <Popup>
                         <div className="p-1 text-xs space-y-1">
-                          <div className="font-bold text-slate-900">{veh.plateNumber || 'Municipal Vehicle'}</div>
-                          <div className="text-[11px] text-slate-500">ID: {veh.vehicleId || veh._id}</div>
-                          <div className="pt-1 border-t border-slate-200 text-slate-600">
-                            Driver: {veh.driverId?.name || 'Assigned Sweeper'}
+                          <div className="font-bold text-[#26372B]">
+                            {veh.plateNumber || 'Collection Truck'}
                           </div>
-                          <div className="text-sky-700 font-semibold uppercase text-[10px]">
-                            Status: {veh.status || 'ACTIVE'}
+                          <div className="text-[#526356]">
+                            Driver: {veh.driverId?.name || 'Assigned Driver'}
+                          </div>
+                          <div className="text-[#21834A] font-semibold">
+                            Status: {veh.status || 'Active'}
                           </div>
                         </div>
                       </Popup>
@@ -564,465 +888,15 @@ export default function Collection() {
                       center={coords}
                       radius={500}
                       pathOptions={{
-                        color: '#0284c7',
-                        fillColor: '#38bdf8',
-                        fillOpacity: 0.15,
+                        color: '#21834A',
+                        fillColor: '#21834A',
+                        fillOpacity: 0.12,
                         weight: 1,
                       }}
                     />
                   );
                 })}
               </MapContainer>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 2: Collection Calendar */}
-      {activeTab === 'CALENDAR' && (
-        <div className="space-y-6">
-          <div className="p-5 rounded-3xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">
-            <div>
-              <h3 className="font-extrabold text-base text-slate-900">Ward Waste Collection Timetables</h3>
-              <p className="text-xs text-slate-500">Official Srinagar Municipal Corporation scheduled sweeps.</p>
-            </div>
-            <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
-              {schedules.length} Active Wards
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {schedules.length > 0 ? (
-              schedules.map((sch) => (
-                <div key={sch._id} className="p-6 bg-white rounded-3xl border border-slate-200 shadow-xs space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="font-extrabold text-sm text-slate-900">{sch.wardName}</div>
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-100 text-emerald-800">
-                      {(sch.wasteType || 'MIXED').replace(/_/g, ' ')}
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-600 font-semibold">
-                    {sch.daysOfWeek?.join(' • ') || 'Daily'}
-                  </p>
-                  <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                    <Clock className="w-3.5 h-3.5 text-slate-400" />
-                    <span>{sch.startTime || '07:00 AM'} – {sch.endTime || '11:00 AM'}</span>
-                  </div>
-                  <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-500">
-                    Assigned Vehicle: <span className="font-semibold text-slate-800">{sch.vehicleId?.plateNumber || 'Municipal Sweeper'}</span>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="col-span-3 p-12 text-center text-xs text-slate-400 bg-white rounded-3xl border border-slate-200">
-                No ward schedules configured.
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* TAB 3: Request Pickup */}
-      {activeTab === 'REQUEST' && (
-        <div className="max-w-2xl mx-auto bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-xs space-y-6">
-          <div className="pb-4 border-b border-slate-100">
-            <h2 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-              <Truck className="w-5 h-5 text-sky-600" />
-              <span>Submit Waste Collection Request</span>
-            </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Request on-demand municipal pickup for excess household waste or book a special event sweep.
-            </p>
-          </div>
-
-          {requestFeedback && (
-            <div className={`p-4 rounded-2xl text-xs font-semibold flex items-center gap-2 ${
-              requestFeedback.type === 'success' ? 'bg-emerald-50 text-emerald-900 border border-emerald-200' : 'bg-rose-50 text-rose-900 border border-rose-200'
-            }`}>
-              {requestFeedback.type === 'success' ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <AlertCircle className="w-4 h-4 text-rose-600" />}
-              <span>{requestFeedback.message}</span>
-            </div>
-          )}
-
-          <form onSubmit={handleCreateRequest} className="space-y-4">
-            {/* Request Type Switcher */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">Request Type</label>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setRequestType('ON_DEMAND')}
-                  className={`p-3 rounded-2xl border text-xs font-bold text-left transition-all ${
-                    requestType === 'ON_DEMAND'
-                      ? 'bg-sky-50 border-sky-500 text-sky-950 ring-2 ring-sky-500/20 shadow-xs'
-                      : 'bg-white border-slate-200 text-slate-600'
-                  }`}
-                >
-                  <div>On-Demand Household</div>
-                  <span className="text-[10px] font-normal text-slate-500">Excess recyclable or bulk waste</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setRequestType('EVENT')}
-                  className={`p-3 rounded-2xl border text-xs font-bold text-left transition-all ${
-                    requestType === 'EVENT'
-                      ? 'bg-purple-50 border-purple-500 text-purple-950 ring-2 ring-purple-500/20 shadow-xs'
-                      : 'bg-white border-slate-200 text-slate-600'
-                  }`}
-                >
-                  <div>Special Event Collection</div>
-                  <span className="text-[10px] font-normal text-slate-500">Weddings, festivals, public gatherings</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Waste Category */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">Waste Stream</label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-sky-500/20 bg-slate-50/50"
-              >
-                <option value="RECYCLABLE">Dry Recyclable Waste (Cardboard, Plastics, Metals)</option>
-                <option value="ORGANIC">Kitchen & Garden Organic Waste</option>
-                <option value="BULK_RESIDUAL">Bulk Furniture or Non-Recyclable Residual</option>
-                <option value="HAZARDOUS">Special / Hazardous Waste (Batteries, Chemicals)</option>
-                <option value="MIXED">Mixed Community Waste</option>
-              </select>
-            </div>
-
-            {/* Estimated Volume */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                Estimated Volume (kg) *
-              </label>
-              <input
-                type="number"
-                min="1"
-                max="1000"
-                required
-                value={estimatedVolumeKg}
-                onChange={(e) => setEstimatedVolumeKg(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold focus:ring-2 focus:ring-sky-500/20 bg-slate-50/50"
-                placeholder="e.g. 15"
-              />
-            </div>
-
-            {/* If Event Collection, Event Specific Fields */}
-            {requestType === 'EVENT' && (
-              <div className="p-4 rounded-2xl bg-purple-50/60 border border-purple-200 space-y-3">
-                <span className="text-xs font-extrabold text-purple-900 block">Event Specific Details</span>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <input
-                      type="text"
-                      required
-                      placeholder="Event Name (e.g. Community Wedding) *"
-                      value={eventDetails.eventName}
-                      onChange={(e) => setEventDetails({ ...eventDetails, eventName: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl border border-purple-200 text-xs bg-white"
-                    />
-                  </div>
-                  <div>
-                    <input
-                      type="date"
-                      required
-                      value={eventDetails.eventDate}
-                      onChange={(e) => setEventDetails({ ...eventDetails, eventDate: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl border border-purple-200 text-xs bg-white"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <input
-                    type="number"
-                    placeholder="Expected Attendees (e.g. 250)"
-                    value={eventDetails.expectedAttendees}
-                    onChange={(e) => setEventDetails({ ...eventDetails, expectedAttendees: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-purple-200 text-xs bg-white"
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Address & Ward */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">Pickup Address *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Street / House No *"
-                  value={pickupAddress}
-                  onChange={(e) => setPickupAddress(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs bg-slate-50/50"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">Srinagar Ward *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ward Name (e.g. Rajbagh) *"
-                  value={wardName}
-                  onChange={(e) => setWardName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs bg-slate-50/50"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">Description & Landmark</label>
-              <textarea
-                rows={2}
-                placeholder="Details on waste packaging, gate accessibility, or landmark..."
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs bg-slate-50/50"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={submittingRequest}
-              className="w-full py-3.5 px-4 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold shadow-md shadow-sky-600/20 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              <Send className="w-4 h-4" />
-              <span>{submittingRequest ? 'Submitting Request...' : 'Submit Collection Request'}</span>
-            </button>
-          </form>
-        </div>
-      )}
-
-      {/* TAB 4: My Requests */}
-      {activeTab === 'MY_REQUESTS' && (
-        <div className="space-y-6">
-          <div className="p-5 rounded-3xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">
-            <div>
-              <h3 className="font-extrabold text-base text-slate-900">Your Submitted Collection Requests</h3>
-              <p className="text-xs text-slate-500">Track review, driver allocation, and completion timestamps.</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setActiveTab('REQUEST')}
-              className="px-3.5 py-1.5 rounded-xl bg-sky-600 text-white text-xs font-bold hover:bg-sky-700 shadow-xs transition-colors flex items-center gap-1.5"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>New Request</span>
-            </button>
-          </div>
-
-          {loadingMyRequests ? (
-            <div className="py-20 text-center text-xs text-slate-400">Loading requests...</div>
-          ) : myRequests.length === 0 ? (
-            <div className="p-16 rounded-3xl bg-white border border-slate-200 shadow-xs text-center space-y-3">
-              <Truck className="w-10 h-10 text-slate-300 mx-auto" />
-              <h4 className="text-base font-bold text-slate-800">No collection requests yet</h4>
-              <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                Have excess recyclables or an upcoming wedding/festival? Submit a pickup request anytime.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {myRequests.map((req) => (
-                <div
-                  key={req._id}
-                  className="p-6 rounded-3xl bg-white border border-slate-200 shadow-xs hover:border-slate-300 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4"
-                >
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <span className="font-extrabold text-sm text-slate-900">
-                        {req.estimatedVolumeKg} kg • {(req.category || 'RECYCLABLE').replace(/_/g, ' ')}
-                      </span>
-                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
-                        req.status === 'COMPLETED'
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : req.status === 'ASSIGNED' || req.status === 'IN_PROGRESS'
-                          ? 'bg-sky-100 text-sky-800'
-                          : req.status === 'CANCELLED' || req.status === 'REJECTED'
-                          ? 'bg-rose-100 text-rose-800'
-                          : 'bg-amber-100 text-amber-800'
-                      }`}>
-                        {req.status}
-                      </span>
-                      <span className="px-2 py-0.5 rounded-lg bg-slate-100 text-slate-600 text-[10px] font-bold">
-                        {req.requestType === 'EVENT' ? 'Special Event' : 'On-Demand'}
-                      </span>
-                    </div>
-
-                    <div className="text-xs text-slate-600 flex items-center gap-2">
-                      <MapPin className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                      <span>{req.pickupAddress}, {req.wardName}</span>
-                    </div>
-
-                    {req.assignedDriverId && (
-                      <div className="text-[11px] text-sky-800 bg-sky-50 px-2.5 py-1 rounded-lg inline-block font-semibold">
-                        Assigned Driver: {req.assignedDriverId?.name || 'Driver'} • Vehicle: {req.assignedVehicleId?.plateNumber || 'Truck'}
-                      </div>
-                    )}
-
-                    <div className="text-[10px] text-slate-400">
-                      Requested on {new Date(req.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
-                    </div>
-                  </div>
-
-                  {req.status === 'REQUESTED' && (
-                    <button
-                      type="button"
-                      onClick={() => handleCancelRequest(req._id)}
-                      className="px-3.5 py-1.5 rounded-xl border border-rose-200 text-rose-700 hover:bg-rose-50 text-xs font-bold transition-colors"
-                    >
-                      Cancel Request
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* TAB 5: Driver Portal & Route VRP (Only for Driver / Admin) */}
-      {activeTab === 'DRIVER' && (
-        <div className="space-y-8">
-          {/* Route VRP KPI Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div className="p-5 rounded-3xl bg-white border border-slate-200 shadow-xs">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Stops</span>
-              <div className="text-3xl font-extrabold text-slate-900 mt-2">
-                {routeData?.summary?.totalStops ?? safeManifest.length}
-              </div>
-              <span className="text-[11px] text-slate-500">Urgent Bins Scheduled</span>
-            </div>
-
-            <div className="p-5 rounded-3xl bg-white border border-slate-200 shadow-xs">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Route Distance</span>
-              <div className="text-3xl font-extrabold text-slate-900 mt-2">
-                {routeData?.summary?.totalDistanceKm ?? 14.8} km
-              </div>
-              <span className="text-[11px] text-slate-500">Optimized TSP Path</span>
-            </div>
-
-            <div className="p-5 rounded-3xl bg-white border border-slate-200 shadow-xs">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Estimated Time</span>
-              <div className="text-3xl font-extrabold text-slate-900 mt-2">
-                {routeData?.summary?.estimatedDurationMin ?? 45}m
-              </div>
-              <span className="text-[11px] text-slate-500">At Urban Speed Limit</span>
-            </div>
-
-            <div className="p-5 rounded-3xl bg-white border border-slate-200 shadow-xs">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Simulated Savings</span>
-              <div className="text-3xl font-extrabold text-emerald-600 mt-2">
-                {routeData?.summary?.fuelSavedPercent ?? 24.5}%
-              </div>
-              <span className="text-[11px] text-slate-500">2-Opt VRP Heuristic</span>
-            </div>
-          </div>
-
-          {/* GPS Broadcast Switch Card */}
-          <div className="p-6 rounded-3xl bg-slate-900 text-white shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-xs font-bold text-sky-300 mb-2">
-                <Radio className="w-3.5 h-3.5 animate-pulse text-rose-400" />
-                <span>Live Telemetry Channel</span>
-              </div>
-              <h3 className="text-base font-bold">Driver Mobile GPS Broadcast</h3>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Stream real-time HTML5 coordinates to the central server and notify citizens within 500 meters.
-              </p>
-            </div>
-
-            <div>
-              {isTracking ? (
-                <button
-                  type="button"
-                  onClick={stopDriverTracking}
-                  className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-md transition-all flex items-center gap-2"
-                >
-                  <Square className="w-4 h-4" />
-                  <span>Stop GPS Broadcast</span>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={startDriverTracking}
-                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md transition-all flex items-center gap-2"
-                >
-                  <Play className="w-4 h-4" />
-                  <span>Start GPS Broadcast</span>
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Route Stop Manifest */}
-          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4">
-            <h3 className="text-base font-bold text-slate-900">Assigned Route Stop Sequence</h3>
-
-            <div className="h-[380px] rounded-2xl overflow-hidden border border-slate-200 relative z-10">
-              <MapContainer
-                center={[34.0837, 74.7973]}
-                zoom={12}
-                scrollWheelZoom={false}
-                className="w-full h-full"
-              >
-                <TileLayer
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
-                {safeManifest.map((m) => (
-                  <Marker
-                    key={m.identifier || m.stopSequence}
-                    position={[m.coordinates[1], m.coordinates[0]]}
-                    icon={createStopIcon(m.stopSequence, m.priority) || undefined}
-                  >
-                    <Popup>
-                      <div className="p-1 text-xs">
-                        <strong>Stop #{m.stopSequence}: {m.name}</strong>
-                        <div>Fill: {m.fillPercent}% • Ward: {m.wardName}</div>
-                      </div>
-                    </Popup>
-                  </Marker>
-                ))}
-                {polylineCoords.length > 1 && (
-                  <Polyline positions={polylineCoords} color="#0284c7" weight={4} opacity={0.7} />
-                )}
-              </MapContainer>
-            </div>
-
-            <div className="space-y-3">
-              {safeManifest.map((stop) => (
-                <div
-                  key={stop.identifier || stop.stopSequence}
-                  className="flex items-center justify-between p-4 rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-xs">
-                      #{stop.stopSequence}
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-slate-900">{stop.name}</h4>
-                      <span className="text-[11px] text-slate-500">
-                        {stop.wardName} • Fill: {stop.fillPercent}% ({stop.estimatedWeightKg} kg)
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs text-slate-500">+{stop.legDistanceKm} km</span>
-                    <button
-                      type="button"
-                      onClick={() => alert(`Stop #${stop.stopSequence} verified and cleared!`)}
-                      className="px-3 py-1.5 rounded-xl bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 border border-slate-200 text-xs font-semibold transition-colors"
-                    >
-                      Mark Collected
-                    </button>
-                  </div>
-                </div>
-              ))}
             </div>
           </div>
         </div>

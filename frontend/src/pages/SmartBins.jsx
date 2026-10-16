@@ -97,24 +97,24 @@ export default function SmartBins() {
       {/* Header Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-violet-50 border border-violet-200 text-violet-800 text-xs font-semibold mb-2">
-            <Radio className="w-3.5 h-3.5 text-violet-600 animate-pulse" />
-            ESP32 Microcontroller Telematics
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#E5F4E8] border border-[#BCE0C6] text-[#1A693B] text-xs font-semibold mb-2">
+            <MapPin className="w-3.5 h-3.5 text-[#21834A]" />
+            Public Bin Status
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
-            IoT Smart Bin Telematics Hub
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#26372B] tracking-tight">
+            Public Smart Bins Around Srinagar
           </h1>
-          <p className="text-xs sm:text-sm text-slate-600 mt-1">
-            Real-time ultrasonic fill tracking, load-cell strain measurements, and thermal alert monitoring across Srinagar.
+          <p className="text-sm text-[#526356] mt-1">
+            Check live fill levels of public waste bins before dropping off household recyclables or general waste.
           </p>
         </div>
 
         <button
           onClick={fetchBins}
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold border border-slate-200 shadow-2xs self-start sm:self-auto transition-colors"
+          className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white hover:bg-[#E5F4E8]/50 text-[#26372B] text-xs font-bold border border-[#DCE6DF] shadow-2xs self-start sm:self-auto transition-colors"
         >
-          <RefreshCw className="w-3.5 h-3.5 text-slate-400" />
-          <span>Refresh Telematics</span>
+          <RefreshCw className="w-3.5 h-3.5 text-[#21834A]" />
+          <span>Refresh Status</span>
         </button>
       </div>
 

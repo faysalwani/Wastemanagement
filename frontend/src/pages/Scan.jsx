@@ -1,34 +1,241 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  Camera, 
-  Upload, 
-  Sparkles, 
-  CheckCircle2, 
-  AlertCircle, 
-  HelpCircle, 
-  RefreshCw, 
-  Repeat, 
-  Sprout, 
+import {
+  Camera,
+  Upload,
+  AlertCircle,
+  RefreshCw,
+  Repeat,
+  Sprout,
+  Recycle,
+  Truck,
   ArrowRight,
-  ShieldCheck,
-  Zap,
-  Info
+  Award,
+  Info,
+  CheckCircle2,
 } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
 const ALL_CATEGORIES = [
+  'Organic/Food Waste',
   'Plastic',
   'Paper/Cardboard',
   'Glass',
   'Metal',
-  'Organic/Food Waste',
   'E-Waste',
   'Textile',
   'Hazardous/Special Waste',
   'Residual Waste',
 ];
+
+// Priority-ordered citizen guidance (1. Reuse -> 2. Compost -> 3. Recycle -> 4. Collection/Disposal)
+const CATEGORY_GUIDANCE = {
+  'Organic/Food Waste': {
+    binLabel: 'Green Bin (Compostable)',
+    summary:
+      'Food scraps, vegetable peels and garden waste can be turned into nutrient-rich compost instead of going to a landfill.',
+    actions: [
+      {
+        label: 'Compost at Home',
+        desc: 'Follow our simple guide to compost kitchen scraps.',
+        to: '/compost',
+        icon: Sprout,
+        primary: true,
+      },
+      {
+        label: 'Share with Local Composters',
+        desc: 'Offer clean organic material to neighbours who compost.',
+        to: '/exchange',
+        icon: Repeat,
+      },
+      {
+        label: 'Request Organic Pickup',
+        desc: 'Schedule collection if you cannot compost at home.',
+        to: '/collection',
+        icon: Truck,
+      },
+    ],
+  },
+  Plastic: {
+    binLabel: 'Blue Bin (Dry Recyclable)',
+    summary:
+      'Clean plastic bottles, tubs and containers can be reused or dropped off at a verified recycling centre. Rinse and dry before recycling.',
+    actions: [
+      {
+        label: 'Share Reusable Containers',
+        desc: 'Pass clean, sturdy containers to neighbours for reuse.',
+        to: '/exchange',
+        icon: Repeat,
+        primary: true,
+      },
+      {
+        label: 'Find a Recycling Centre',
+        desc: 'Locate verified local recyclers accepting plastic.',
+        to: '/recyclers',
+        icon: Recycle,
+      },
+      {
+        label: 'Request Recyclable Pickup',
+        desc: 'Arrange collection for sorted dry recyclables.',
+        to: '/collection',
+        icon: Truck,
+      },
+    ],
+  },
+  'Paper/Cardboard': {
+    binLabel: 'Blue Bin (Dry Recyclable)',
+    summary:
+      'Clean cardboard boxes, cartons and paper should be kept dry. Flatten boxes so they can be reused or recycled easily.',
+    actions: [
+      {
+        label: 'Share Boxes for Reuse',
+        desc: 'Offer clean packing boxes or cartons to neighbours.',
+        to: '/exchange',
+        icon: Repeat,
+        primary: true,
+      },
+      {
+        label: 'Use Shredded Brown Paper in Compost',
+        desc: 'Unbleached cardboard and paper help balance home compost.',
+        to: '/compost',
+        icon: Sprout,
+      },
+      {
+        label: 'Find Paper & Cardboard Recyclers',
+        desc: 'See local facilities that accept paper and cardboard.',
+        to: '/recyclers',
+        icon: Recycle,
+      },
+    ],
+  },
+  Glass: {
+    binLabel: 'Blue Bin (Glass & Recyclables)',
+    summary:
+      'Intact glass jars and bottles are great for household reuse. Broken glass should be wrapped safely and sent for recycling or collection.',
+    actions: [
+      {
+        label: 'Share Clean Glass Jars',
+        desc: 'List intact jars or bottles for community reuse.',
+        to: '/exchange',
+        icon: Repeat,
+        primary: true,
+      },
+      {
+        label: 'Find Glass Recycling Options',
+        desc: 'View verified scrap and recycling drop-off points.',
+        to: '/recyclers',
+        icon: Recycle,
+      },
+      {
+        label: 'Arrange Safe Collection',
+        desc: 'Schedule a pickup for bulky or safely packed glass.',
+        to: '/collection',
+        icon: Truck,
+      },
+    ],
+  },
+  Metal: {
+    binLabel: 'Blue Bin (Recyclable Metals)',
+    summary:
+      'Aluminium cans, tin containers and clean scrap metal have high recycling value and can be recovered repeatedly.',
+    actions: [
+      {
+        label: 'Share Usable Metal Items',
+        desc: 'Offer intact tins or metal items for neighbourhood reuse.',
+        to: '/exchange',
+        icon: Repeat,
+      },
+      {
+        label: 'Find Scrap & Metal Recyclers',
+        desc: 'Locate authorized scrap dealers and recovery centres.',
+        to: '/recyclers',
+        icon: Recycle,
+        primary: true,
+      },
+      {
+        label: 'Request a Pickup',
+        desc: 'Schedule collection for larger metal items.',
+        to: '/collection',
+        icon: Truck,
+      },
+    ],
+  },
+  'E-Waste': {
+    binLabel: 'Special Handling (Electronic Waste)',
+    summary:
+      'Electronics, cables, circuit boards and batteries must never be thrown in regular bins. Take them to an authorized e-waste recycler or book a pickup.',
+    actions: [
+      {
+        label: 'Find E-Waste Drop-Off Centres',
+        desc: 'Locate certified facilities that handle electronics safely.',
+        to: '/recyclers',
+        icon: Recycle,
+        primary: true,
+      },
+      {
+        label: 'Request Special E-Waste Pickup',
+        desc: 'Arrange safe doorstep collection for electronic items.',
+        to: '/collection',
+        icon: Truck,
+      },
+    ],
+  },
+  Textile: {
+    binLabel: 'Reuse or Dry Recovery',
+    summary:
+      'Clean clothing, bags and fabric can be reused or shared before considering disposal.',
+    actions: [
+      {
+        label: 'Share Usable Fabrics & Items',
+        desc: 'Offer clean textiles or reusable bags on the community exchange.',
+        to: '/exchange',
+        icon: Repeat,
+        primary: true,
+      },
+      {
+        label: 'Request a Pickup',
+        desc: 'Schedule collection for bundled textile waste.',
+        to: '/collection',
+        icon: Truck,
+      },
+    ],
+  },
+  'Hazardous/Special Waste': {
+    binLabel: 'Red / Hazardous Handling Required',
+    summary:
+      'Paints, chemicals, medical items, syringes and pressurized cans require safe, separate collection. Do not mix with household trash or compost.',
+    actions: [
+      {
+        label: 'Request Safe Hazardous Pickup',
+        desc: 'Arrange dedicated municipal collection for special waste.',
+        to: '/collection',
+        icon: Truck,
+        primary: true,
+      },
+      {
+        label: 'Check Authorized Recovery Centres',
+        desc: 'See facilities equipped to handle special materials.',
+        to: '/recyclers',
+        icon: Recycle,
+      },
+    ],
+  },
+  'Residual Waste': {
+    binLabel: 'General / Residual Waste Bin',
+    summary:
+      'Heavily soiled or non-recyclable items cannot be composted or recycled. Keep them separate from clean recyclables and arrange regular collection.',
+    actions: [
+      {
+        label: 'Request Waste Collection',
+        desc: 'Arrange collection or check your area schedule.',
+        to: '/collection',
+        icon: Truck,
+        primary: true,
+      },
+    ],
+  },
+};
 
 export default function Scan() {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -36,32 +243,24 @@ export default function Scan() {
   const [analyzing, setAnalyzing] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
-  const [aiStatus, setAiStatus] = useState(null);
   const [manualOverride, setManualOverride] = useState(false);
   const [activeCategory, setActiveCategory] = useState(null);
 
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
-  const { user, refreshUser } = useAuth() || {};
-
-  // Fetch AI engine status on mount
-  useEffect(() => {
-    api.get('/ai/status')
-      .then((res) => setAiStatus(res.data))
-      .catch(() => setAiStatus({ fallbackReady: true }));
-  }, []);
+  const { refreshUser } = useAuth() || {};
 
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      setError('Please select a valid image file (JPEG, PNG, or WebP).');
+      setError('Please choose a valid photo (JPEG, PNG or WebP).');
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      setError('Selected image exceeds the 5MB size limit.');
+      setError('This photo is larger than 5 MB. Please choose a smaller image.');
       return;
     }
 
@@ -96,7 +295,7 @@ export default function Scan() {
     } catch (err) {
       setError(
         err.response?.data?.error?.message ||
-        'Failed to classify waste image. Please try again.'
+          'We could not analyze this photo right now. You can try again or choose a category below.'
       );
     } finally {
       setAnalyzing(false);
@@ -117,320 +316,353 @@ export default function Scan() {
     setManualOverride(true);
   };
 
-  return (
-    <div className="max-w-5xl mx-auto px-4 py-10 space-y-8">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold mb-2">
-            <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-            MobileNetV3 Computer Vision
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
-            AI Waste Classifier & Recommender
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-600 mt-1">
-            Capture or upload a waste photo to determine its material category and circular recovery pathway.
-          </p>
-        </div>
+  const currentGuidance =
+    CATEGORY_GUIDANCE[activeCategory] || CATEGORY_GUIDANCE['Residual Waste'];
 
-        {/* AI Status Badge */}
-        <div className="flex items-center gap-2 p-2.5 rounded-2xl bg-white border border-slate-200 text-xs text-slate-600 self-start sm:self-auto shadow-2xs">
-          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span>
-            AI Pipeline: <strong className="text-slate-800">{aiStatus?.pythonMicroservice?.connected ? 'Python FastAPI' : 'Active (Resilient Mode)'}</strong>
-          </span>
-        </div>
+  return (
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10 space-y-8">
+      {/* Clear, Plain-Language Header */}
+      <div className="space-y-2">
+        <p className="text-xs font-bold uppercase tracking-wider text-[#21834A]">
+          Step-by-Step Waste Guide
+        </p>
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-[#26372B] tracking-tight">
+          What should I do with this waste?
+        </h1>
+        <p className="text-sm sm:text-base text-[#526356]">
+          Take a photo or upload an image of an item to see the best way to reuse, compost, recycle or dispose of it.
+        </p>
       </div>
 
+      {/* Error Message */}
       {error && (
-        <div className="flex items-center gap-2 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-800">
-          <AlertCircle className="w-4 h-4 flex-shrink-0" />
-          <span>{error}</span>
+        <div
+          role="alert"
+          className="flex items-start gap-3 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-sm text-rose-800"
+        >
+          <AlertCircle className="w-5 h-5 text-rose-600 flex-shrink-0 mt-0.5" />
+          <div className="space-y-2 flex-1">
+            <p>{error}</p>
+            {!result && (
+              <div>
+                <p className="text-xs font-semibold text-rose-900 mb-1.5">
+                  Or pick the material type directly to see what to do next:
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {ALL_CATEGORIES.map((cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => {
+                        setActiveCategory(cat);
+                        setManualOverride(true);
+                        setResult({
+                          predictedCategory: cat,
+                          confidenceLevel: 'MANUAL',
+                          imageUrl: previewUrl,
+                        });
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-white border border-rose-200 text-xs font-semibold text-[#26372B] hover:bg-rose-100"
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
-      {/* Main Interaction Area */}
+      {/* STEP 1 & 2: UPLOAD / PREVIEW & PROCESSING */}
       {!result ? (
-        <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-10 shadow-xs">
+        <div className="bg-white rounded-2xl border border-[#DCE6DF] p-6 sm:p-8 space-y-6">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleFileChange}
+          />
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={handleFileChange}
+          />
+
           {!previewUrl ? (
             <div className="space-y-6">
-              {/* Dropzone Container */}
               <div
                 onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-slate-300 hover:border-eco-500 rounded-3xl p-8 sm:p-14 text-center cursor-pointer transition-colors bg-slate-50/50 hover:bg-eco-50/20 group"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    fileInputRef.current?.click();
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+                aria-label="Choose a waste photo to upload"
+                className="border-2 border-dashed border-[#C5D4C9] hover:border-[#21834A] rounded-2xl p-8 sm:p-12 text-center cursor-pointer transition-colors bg-[#F8FAF8]"
               >
-                <div className="w-16 h-16 mx-auto rounded-2xl bg-white border border-slate-200 flex items-center justify-center text-slate-400 group-hover:text-eco-600 group-hover:scale-110 shadow-xs transition-all">
-                  <Upload className="w-8 h-8" />
+                <div className="w-14 h-14 mx-auto rounded-2xl bg-[#E5F4E8] text-[#21834A] flex items-center justify-center">
+                  <Camera className="w-7 h-7" />
                 </div>
-                <h3 className="mt-4 text-base font-bold text-slate-800">
-                  Upload Waste Image
-                </h3>
-                <p className="mt-1 text-xs text-slate-500 max-w-sm mx-auto">
-                  Drag and drop an image here, or click to browse files from your device.
+                <h2 className="mt-4 text-lg font-bold text-[#26372B]">
+                  Step 1: Add a photo of the item
+                </h2>
+                <p className="mt-1 text-sm text-[#526356] max-w-md mx-auto">
+                  Place a single item clearly in view for the best result. Supports JPEG, PNG or WebP up to 5 MB.
                 </p>
-                <span className="inline-block mt-3 px-2.5 py-1 rounded-md bg-slate-100 text-[11px] font-medium text-slate-500">
-                  JPEG, PNG, or WebP (Max 5MB)
-                </span>
               </div>
 
-              {/* Action Buttons: Camera & Browse */}
-              <div className="flex flex-wrap items-center justify-center gap-3">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleFileChange}
-                />
-                <input
-                  ref={cameraInputRef}
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  className="hidden"
-                  onChange={handleFileChange}
-                />
-
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
                 <button
                   type="button"
                   onClick={() => cameraInputRef.current?.click()}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-xs transition-colors"
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-[#21834A] hover:bg-[#1B6E3E] text-white text-sm font-semibold transition-colors"
                 >
-                  <Camera className="w-4 h-4 text-emerald-400" />
-                  <span>Open Camera</span>
+                  <Camera className="w-5 h-5" />
+                  <span>Take a Photo</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white hover:bg-slate-100 text-slate-800 text-xs font-semibold border border-slate-300 shadow-2xs transition-colors"
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-white hover:bg-[#F8FAF8] text-[#26372B] text-sm font-semibold border border-[#DCE6DF] transition-colors"
                 >
-                  <Upload className="w-4 h-4 text-slate-500" />
-                  <span>Browse Photos</span>
+                  <Upload className="w-5 h-5 text-[#21834A]" />
+                  <span>Upload from Device</span>
                 </button>
+              </div>
+
+              {/* Manual Option Without Photo */}
+              <div className="pt-6 border-t border-[#DCE6DF] space-y-2">
+                <p className="text-xs font-semibold text-[#526356] text-center">
+                  Don’t have a camera handy? Pick a waste type to see what to do:
+                </p>
+                <div className="flex flex-wrap justify-center gap-2">
+                  {ALL_CATEGORIES.map((cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => {
+                        setActiveCategory(cat);
+                        setManualOverride(true);
+                        setResult({
+                          predictedCategory: cat,
+                          confidenceLevel: 'MANUAL',
+                          imageUrl: null,
+                        });
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-[#F8FAF8] hover:bg-[#E5F4E8] text-xs font-semibold text-[#26372B] border border-[#DCE6DF] transition-colors"
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           ) : (
-            /* Image Preview & Analyze Trigger */
+            /* Step 2: Preview & Check Photo */
             <div className="space-y-6">
-              <div className="relative max-w-md mx-auto rounded-2xl overflow-hidden border border-slate-200 shadow-md aspect-4/3 bg-slate-900 flex items-center justify-center">
+              <div className="relative max-w-md mx-auto rounded-2xl overflow-hidden border border-[#DCE6DF] bg-slate-900 aspect-4/3 flex items-center justify-center">
                 <img
                   src={previewUrl}
-                  alt="Waste item preview"
+                  alt="Selected waste item"
                   className="w-full h-full object-contain"
                 />
 
                 {analyzing && (
-                  <div className="absolute inset-0 bg-slate-900/70 backdrop-blur-xs flex flex-col items-center justify-center text-white">
-                    <div className="w-10 h-10 border-4 border-eco-400 border-t-transparent rounded-full animate-spin"></div>
-                    <span className="mt-3 text-xs font-semibold tracking-wide">
-                      Extracting Features with CNN...
+                  <div
+                    role="status"
+                    aria-live="polite"
+                    className="absolute inset-0 bg-slate-900/75 flex flex-col items-center justify-center text-white p-4 text-center"
+                  >
+                    <div className="w-10 h-10 border-4 border-[#E5F4E8] border-t-[#21834A] rounded-full animate-spin" />
+                    <span className="mt-3 text-sm font-semibold">
+                      Checking your photo...
+                    </span>
+                    <span className="text-xs text-white/80 mt-1">
+                      Identifying the material and best disposal option
                     </span>
                   </div>
                 )}
               </div>
 
-              <div className="flex items-center justify-center gap-3">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
                 <button
                   type="button"
                   onClick={handleReset}
                   disabled={analyzing}
-                  className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors disabled:opacity-50"
+                  className="px-5 py-3 rounded-xl bg-[#F8FAF8] hover:bg-slate-200 text-[#26372B] border border-[#DCE6DF] text-sm font-semibold transition-colors disabled:opacity-50"
                 >
-                  Change Image
+                  Choose a Different Photo
                 </button>
 
                 <button
                   type="button"
                   onClick={handleAnalyze}
                   disabled={analyzing}
-                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-eco-600 hover:bg-eco-700 text-white text-xs font-semibold shadow-md shadow-eco-600/20 transition-all disabled:opacity-50"
+                  className="inline-flex items-center justify-center gap-2 px-7 py-3 rounded-xl bg-[#21834A] hover:bg-[#1B6E3E] text-white text-sm font-semibold transition-colors disabled:opacity-50"
                 >
-                  <Sparkles className="w-4 h-4 text-amber-300" />
-                  <span>{analyzing ? 'Analyzing Image...' : 'Classify with AI'}</span>
+                  <span>{analyzing ? 'Checking Photo...' : 'Check This Item'}</span>
+                  <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
             </div>
           )}
         </div>
       ) : (
-        /* Results Section */
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Image Preview & Top Probabilities */}
-            <div className="md:col-span-1 bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4">
-              <div className="rounded-2xl overflow-hidden aspect-4/3 bg-slate-100 border border-slate-200">
+        /* STEP 3, 4 & 5: RESULT, GUIDANCE & NEXT ACTIONS */
+        <div className="bg-white rounded-2xl border border-[#DCE6DF] p-6 sm:p-8 space-y-6">
+          {/* Top Summary Row */}
+          <div className="flex flex-col sm:flex-row items-start gap-5 pb-6 border-b border-[#DCE6DF]">
+            {(result.imageUrl || previewUrl) && (
+              <div className="w-full sm:w-36 h-36 rounded-xl overflow-hidden border border-[#DCE6DF] bg-[#F8FAF8] flex-shrink-0">
                 <img
-                  src={result.imageUrl}
-                  alt="Classified waste"
+                  src={result.imageUrl || previewUrl}
+                  alt="Scanned waste item"
                   className="w-full h-full object-cover"
                 />
               </div>
+            )}
 
-              {/* Academic Honesty Badge */}
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-600 space-y-1">
-                <div className="flex items-center justify-between font-semibold text-slate-800">
-                  <span>Engine Model:</span>
-                  <span className="text-eco-600">{result.modelStatus}</span>
-                </div>
-                <div className="flex items-center justify-between text-slate-500">
-                  <span>Latency:</span>
-                  <span>{result.inferenceTimeMs} ms</span>
-                </div>
+            <div className="space-y-2 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#21834A]">
+                  {manualOverride ? 'Selected Material' : 'Estimated Material'}
+                </span>
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#E5F4E8] text-[#21834A]">
+                  {currentGuidance.binLabel}
+                </span>
               </div>
 
-              {/* Class Probability Distribution */}
-              <div>
-                <h4 className="text-xs font-bold text-slate-700 mb-2">Class Probabilities</h4>
-                <div className="space-y-2">
-                  {result.topPredictions?.map((pred, i) => (
-                    <div key={pred.category} className="space-y-0.5">
-                      <div className="flex justify-between text-[11px] text-slate-600">
-                        <span className="font-medium">{pred.category}</span>
-                        <span className="font-bold">{pred.probability}%</span>
-                      </div>
-                      <div className="w-full h-1.5 rounded-full bg-slate-100 overflow-hidden">
-                        <div
-                          className={`h-full rounded-full ${
-                            i === 0 ? 'bg-eco-500' : 'bg-slate-300'
-                          }`}
-                          style={{ width: `${pred.probability}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                  ))}
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-[#26372B]">
+                {activeCategory}
+              </h2>
+
+              <p className="text-sm text-[#526356] leading-relaxed">
+                {result.recommendation?.instruction || currentGuidance.summary}
+              </p>
+
+              {result.ecoCreditsEarned > 0 && (
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#E5F4E8] text-[#21834A] text-xs font-bold mt-1">
+                  <Award className="w-4 h-4" />
+                  <span>You earned +{result.ecoCreditsEarned} reward points!</span>
                 </div>
-              </div>
+              )}
             </div>
+          </div>
 
-            {/* Classification & Recommendation Details */}
-            <div className="md:col-span-2 bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-xs space-y-6 flex flex-col justify-between">
-              <div>
-                {/* Confidence Meter Banner */}
-                <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-100">
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                      Identified Material
-                    </span>
-                    <h2 className="text-2xl font-extrabold text-slate-900 mt-0.5">
-                      {activeCategory}
-                    </h2>
-                  </div>
-
-                  {/* Confidence Badge */}
-                  <div className="flex items-center gap-2">
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                      result.confidenceLevel === 'HIGH'
-                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                        : result.confidenceLevel === 'MEDIUM'
-                        ? 'bg-amber-100 text-amber-800 border border-amber-200'
-                        : 'bg-rose-100 text-rose-800 border border-rose-200'
-                    }`}>
-                      {result.confidence}% Confidence ({result.confidenceLevel})
-                    </span>
-                  </div>
-                </div>
-
-                {/* Moderate or Low Confidence Notice */}
-                {result.confidenceLevel !== 'HIGH' && (
-                  <div className="mt-4 p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-800 flex items-start gap-2">
-                    <Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-600" />
-                    <div>
-                      <span className="font-semibold">AI Prediction requires confirmation.</span> If this item is not <strong>{result.predictedCategory}</strong>, please select the exact material below:
-                    </div>
-                  </div>
-                )}
-
-                {/* 9-Class Manual Selector Fallback */}
-                <div className="mt-4">
-                  <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
-                    Verify or Select Category:
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {ALL_CATEGORIES.map((cat) => (
-                      <button
-                        key={cat}
-                        type="button"
-                        onClick={() => handleSelectManualCategory(cat)}
-                        className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
-                          activeCategory === cat
-                            ? 'bg-slate-900 text-white shadow-xs scale-102'
-                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                        }`}
-                      >
-                        {cat}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Circular Action Pathway */}
-                <div className="mt-6 p-5 rounded-2xl bg-eco-50/50 border border-eco-200 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-eco-800 uppercase tracking-wider">
-                      Recommended Waste Pathway
-                    </span>
-                    <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-extrabold ${
-                      result.recommendation?.binColor === 'GREEN'
-                        ? 'bg-emerald-200 text-emerald-900'
-                        : result.recommendation?.binColor === 'BLUE'
-                        ? 'bg-blue-200 text-blue-900'
-                        : result.recommendation?.binColor === 'YELLOW'
-                        ? 'bg-amber-200 text-amber-900'
-                        : 'bg-slate-200 text-slate-900'
-                    }`}>
-                      {result.recommendation?.binName}
-                    </span>
-                  </div>
-
-                  <p className="text-xs text-slate-700 leading-relaxed">
-                    {result.recommendation?.instruction}
-                  </p>
-
-                  {/* Eco-Credit Reward Toast */}
-                  {result.ecoCreditsEarned > 0 && (
-                    <div className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800">
-                      <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-                      <span>+{result.ecoCreditsEarned} Eco-Credits awarded for source segregation!</span>
-                    </div>
-                  )}
-                </div>
+          {/* Uncertainty / Verification Notice (Never claim prediction is guaranteed) */}
+          {!manualOverride && result.confidenceLevel !== 'MANUAL' && (
+            <div className="p-4 rounded-xl bg-[#F8FAF8] border border-[#DCE6DF] space-y-3">
+              <div className="flex items-start gap-2.5 text-xs sm:text-sm text-[#526356]">
+                <Info className="w-4 h-4 text-[#21834A] flex-shrink-0 mt-0.5" />
+                <span>
+                  {result.confidenceLevel === 'HIGH'
+                    ? 'Image predictions are an estimate. If this item is made of a different material, select the right category below:'
+                    : 'We are not completely certain from this photo alone. Please confirm or select the matching material below:'}
+                </span>
               </div>
 
-              {/* Action Buttons */}
-              <div className="pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
-                <button
-                  type="button"
-                  onClick={handleReset}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors"
-                >
-                  <RefreshCw className="w-3.5 h-3.5" />
-                  <span>Scan Another Item</span>
-                </button>
-
-                <div className="flex items-center gap-2">
-                  {activeCategory === 'Organic/Food Waste' && (
-                    <Link
-                      to="/compost"
-                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-lime-600 hover:bg-lime-700 text-white text-xs font-semibold shadow-xs transition-colors"
-                    >
-                      <Sprout className="w-3.5 h-3.5" />
-                      <span>Composting Guide</span>
-                    </Link>
-                  )}
-
-                  <Link
-                    to="/exchange"
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-eco-600 hover:bg-eco-700 text-white text-xs font-semibold shadow-xs transition-colors"
+              <div className="flex flex-wrap gap-1.5">
+                {ALL_CATEGORIES.map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => handleSelectManualCategory(cat)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${
+                      activeCategory === cat
+                        ? 'bg-[#21834A] text-white'
+                        : 'bg-white text-[#26372B] border border-[#DCE6DF] hover:bg-[#E5F4E8]'
+                    }`}
                   >
-                    <Repeat className="w-3.5 h-3.5" />
-                    <span>Offer in Exchange</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </Link>
-                </div>
+                    {cat}
+                  </button>
+                ))}
               </div>
             </div>
+          )}
+
+          {manualOverride && (
+            <div className="p-4 rounded-xl bg-[#F8FAF8] border border-[#DCE6DF] space-y-2">
+              <div className="flex items-center gap-2 text-xs font-semibold text-[#21834A]">
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Category selected manually. Switch material anytime:</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {ALL_CATEGORIES.map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => handleSelectManualCategory(cat)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${
+                      activeCategory === cat
+                        ? 'bg-[#21834A] text-white'
+                        : 'bg-white text-[#26372B] border border-[#DCE6DF] hover:bg-[#E5F4E8]'
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Recommended Next Actions (Ordered: Reuse -> Compost -> Recycle -> Collection) */}
+          <div className="space-y-3">
+            <h3 className="text-base font-bold text-[#26372B]">
+              Recommended next steps
+            </h3>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {currentGuidance.actions.map((act) => {
+                const ActIcon = act.icon;
+                return (
+                  <Link
+                    key={act.label}
+                    to={act.to}
+                    className={`p-4 rounded-xl border transition-all flex items-start justify-between gap-3 ${
+                      act.primary
+                        ? 'bg-[#E5F4E8] border-[#21834A] text-[#26372B]'
+                        : 'bg-white border-[#DCE6DF] hover:border-[#21834A] text-[#26372B]'
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-lg bg-white text-[#21834A] border border-[#DCE6DF] mt-0.5">
+                        <ActIcon className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-bold text-[#26372B]">
+                          {act.label}
+                        </div>
+                        <div className="text-xs text-[#526356] mt-0.5">
+                          {act.desc}
+                        </div>
+                      </div>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-[#21834A] flex-shrink-0 mt-1" />
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Scan Another Item Button */}
+          <div className="pt-4 border-t border-[#DCE6DF] flex items-center justify-between">
+            <button
+              type="button"
+              onClick={handleReset}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#F8FAF8] hover:bg-[#E5F4E8] text-[#26372B] border border-[#DCE6DF] text-sm font-semibold transition-colors"
+            >
+              <RefreshCw className="w-4 h-4 text-[#21834A]" />
+              <span>Scan another item</span>
+            </button>
           </div>
         </div>
       )}

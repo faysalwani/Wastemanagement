@@ -142,35 +142,37 @@ export default function Marketplace() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-10 space-y-8">
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-emerald-800 via-teal-900 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+      <div className="bg-[#21834A] rounded-3xl p-6 sm:p-8 text-white shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div className="space-y-2 max-w-2xl">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-xs text-xs font-semibold text-emerald-200">
-            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-            EcoCycle Rewards Marketplace • Srinagar
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 text-xs font-semibold text-[#E5F4E8]">
+            <Award className="w-3.5 h-3.5 text-white" />
+            Clear Waste Rewards Store
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-            Exchange Eco-Credits for Zero-Waste Gear
+            Redeem Your Points for Home Recycling & Composting Gear
           </h1>
-          <p className="text-xs sm:text-sm text-emerald-100 font-normal leading-relaxed">
-            Convert credits earned from composting and verified segregation into physical home recycling tools, composters, and bags.
+          <p className="text-sm text-[#E5F4E8] font-normal leading-relaxed">
+            Use points earned from composting, sharing reusable materials, and reporting waste piles—or purchase directly.
           </p>
         </div>
 
         {isAuthenticated && (
-          <div className="p-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-right flex-shrink-0">
-            <span className="text-[11px] font-bold text-emerald-200 uppercase tracking-wider block">
+          <div className="p-4 rounded-2xl bg-white/15 border border-white/25 text-left md:text-right flex-shrink-0">
+            <span className="text-xs font-bold text-[#E5F4E8] uppercase tracking-wider block">
               Your Available Balance
             </span>
             <div className="text-2xl sm:text-3xl font-extrabold text-white mt-0.5">
-              {userCredits.toLocaleString()} <span className="text-lg text-amber-300">EC</span>
+              {userCredits.toLocaleString()} <span className="text-base text-[#E5F4E8]">pts</span>
             </div>
-            <Link
-              to="/wallet"
-              className="text-[11px] text-amber-300 hover:text-amber-200 font-bold inline-flex items-center gap-1 mt-1"
-            >
-              <span>View Wallet Ledger</span>
-              <ArrowRight className="w-3 h-3" />
-            </Link>
+            <div className="flex items-center gap-3 mt-1.5 text-xs font-bold text-white">
+              <Link to="/wallet" className="underline hover:text-[#E5F4E8]">
+                Points History
+              </Link>
+              <span>•</span>
+              <Link to="/orders" className="underline hover:text-[#E5F4E8]">
+                My Orders
+              </Link>
+            </div>
           </div>
         )}
       </div>
@@ -186,8 +188,8 @@ export default function Marketplace() {
               onClick={() => setSelectedCategory(cat.id)}
               className={`px-4 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition-all ${
                 selectedCategory === cat.id
-                  ? 'bg-slate-900 text-white shadow-xs'
-                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                  ? 'bg-[#21834A] text-white shadow-xs'
+                  : 'bg-white text-[#526356] hover:bg-[#E5F4E8]/50 border border-[#DCE6DF]'
               }`}
             >
               {cat.label}
@@ -200,12 +202,12 @@ export default function Marketplace() {
           <form onSubmit={handleSearchSubmit} className="relative flex-1 sm:w-64">
             <input
               type="text"
-              placeholder="Search products..."
+              placeholder="Search rewards..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-emerald-500/20 bg-white"
+              className="w-full pl-9 pr-3 py-2 rounded-xl border border-[#DCE6DF] text-xs focus:border-[#21834A] bg-white"
             />
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+            <Search className="w-4 h-4 text-[#526356] absolute left-3 top-2.5" />
           </form>
 
           <button
@@ -213,8 +215,8 @@ export default function Marketplace() {
             onClick={() => setInStockOnly(!inStockOnly)}
             className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition-all whitespace-nowrap ${
               inStockOnly
-                ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
-                : 'bg-white border-slate-200 text-slate-600'
+                ? 'bg-[#E5F4E8] border-[#21834A] text-[#1A693B]'
+                : 'bg-white border-[#DCE6DF] text-[#526356]'
             }`}
           >
             In Stock Only
@@ -224,36 +226,49 @@ export default function Marketplace() {
 
       {/* Product Grid */}
       {loading ? (
-        <div className="py-24 text-center text-xs text-slate-400">Loading rewards marketplace catalog...</div>
+        <div className="py-24 text-center text-sm text-[#526356]">Loading rewards store...</div>
       ) : products.length === 0 ? (
-        <div className="p-16 rounded-3xl bg-white border border-slate-200 shadow-xs text-center space-y-3">
-          <ShoppingBag className="w-10 h-10 text-slate-300 mx-auto" />
-          <h3 className="text-base font-bold text-slate-800">No products found</h3>
-          <p className="text-xs text-slate-500 max-w-sm mx-auto">
-            Try adjusting your category or search query to find available circular economy products.
+        <div className="p-16 rounded-3xl bg-white border border-[#DCE6DF] shadow-xs text-center space-y-3">
+          <ShoppingBag className="w-10 h-10 text-[#526356]/50 mx-auto" />
+          <h3 className="text-base font-bold text-[#26372B]">No matching rewards found</h3>
+          <p className="text-xs text-[#526356] max-w-sm mx-auto">
+            Try choosing another category or clearing your search filter.
           </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {products.map((product) => {
             const isOutOfStock = product.stock === 0;
+            const hasPoints = product.ecoCreditPrice > 0;
+            const hasMoney = product.moneyPrice > 0;
+            const paymentTag =
+              hasPoints && hasMoney
+                ? 'Points or Cash'
+                : hasPoints
+                ? 'Points Only'
+                : 'Cash Only';
 
             return (
               <div
                 key={product._id}
-                className="bg-white rounded-3xl border border-slate-200 shadow-xs hover:shadow-md transition-all flex flex-col justify-between overflow-hidden"
+                className="bg-white rounded-3xl border border-[#DCE6DF] shadow-xs hover:border-[#21834A]/50 transition-all flex flex-col justify-between overflow-hidden"
               >
                 <div className="p-6 space-y-4">
-                  {/* Category & Stock Tag */}
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-[10px] font-extrabold uppercase">
-                      {product.category.replace(/_/g, ' ')}
-                    </span>
+                  {/* Category, Payment Option & Stock Tag */}
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5">
+                      <span className="px-2.5 py-1 rounded-lg bg-[#F8FAF8] border border-[#DCE6DF] text-[#26372B] text-[10px] font-bold uppercase">
+                        {product.category.replace(/_/g, ' ')}
+                      </span>
+                      <span className="px-2 py-1 rounded-lg bg-[#E5F4E8] text-[#1A693B] text-[10px] font-bold">
+                        {paymentTag}
+                      </span>
+                    </div>
                     <span
-                      className={`px-2.5 py-1 rounded-lg text-[10px] font-extrabold ${
+                      className={`px-2.5 py-1 rounded-lg text-[10px] font-bold ${
                         isOutOfStock
-                          ? 'bg-rose-100 text-rose-800'
-                          : 'bg-emerald-100 text-emerald-800'
+                          ? 'bg-rose-50 text-rose-800 border border-rose-200'
+                          : 'bg-[#E5F4E8] text-[#1A693B]'
                       }`}
                     >
                       {isOutOfStock ? 'Out of Stock' : `${product.stock} In Stock`}
@@ -262,52 +277,56 @@ export default function Marketplace() {
 
                   {/* Product Title & Details */}
                   <div className="space-y-1.5">
-                    <h3 className="text-base font-extrabold text-slate-900 leading-tight">
+                    <h3 className="text-base font-bold text-[#26372B] leading-tight">
                       {product.name}
                     </h3>
-                    <p className="text-xs text-slate-600 leading-relaxed font-normal line-clamp-2">
+                    <p className="text-xs sm:text-sm text-[#526356] leading-relaxed font-normal line-clamp-2">
                       {product.description}
                     </p>
                   </div>
 
                   {product.vendor && (
-                    <div className="text-[11px] text-slate-400 font-medium">
-                      Provided by <span className="text-slate-700 font-bold">{product.vendor}</span>
+                    <div className="text-xs text-[#526356]">
+                      Partner: <span className="text-[#26372B] font-semibold">{product.vendor}</span>
                     </div>
                   )}
                 </div>
 
                 {/* Pricing & CTA Footer */}
                 <div className="p-6 pt-0 space-y-4">
-                  <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between">
-                    <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                        Eco-Credit Price
-                      </span>
-                      <div className="text-lg font-extrabold text-emerald-700 flex items-baseline gap-1">
-                        <span>{product.ecoCreditPrice.toLocaleString()}</span>
-                        <span className="text-xs font-bold text-emerald-600">EC</span>
+                  <div className="p-3.5 rounded-2xl bg-[#F8FAF8] border border-[#DCE6DF] flex items-center justify-between">
+                    {hasPoints && (
+                      <div>
+                        <span className="text-[10px] font-bold text-[#526356] uppercase tracking-wider block">
+                          Redeem with Points
+                        </span>
+                        <div className="text-lg font-extrabold text-[#21834A] flex items-baseline gap-1">
+                          <span>{product.ecoCreditPrice.toLocaleString()}</span>
+                          <span className="text-xs font-bold">pts</span>
+                        </div>
                       </div>
-                    </div>
+                    )}
 
-                    <div className="text-right">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                        Cash Price
-                      </span>
-                      <div className="text-base font-extrabold text-slate-800">
-                        ₹{product.moneyPrice.toLocaleString()}
+                    {hasMoney && (
+                      <div className={hasPoints ? 'text-right' : 'text-left'}>
+                        <span className="text-[10px] font-bold text-[#526356] uppercase tracking-wider block">
+                          Or Buy with Cash
+                        </span>
+                        <div className="text-base font-extrabold text-[#26372B]">
+                          ₹{product.moneyPrice.toLocaleString()}
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
 
                   <button
                     type="button"
                     disabled={isOutOfStock}
                     onClick={() => openCheckout(product)}
-                    className="w-full py-3 px-4 rounded-xl bg-slate-900 hover:bg-emerald-600 text-white text-xs font-extrabold shadow-sm transition-all disabled:opacity-40 flex items-center justify-center gap-2"
+                    className="w-full py-3 px-4 rounded-xl bg-[#21834A] hover:bg-[#1A693B] text-white text-xs sm:text-sm font-bold shadow-xs transition-colors disabled:opacity-40 flex items-center justify-center gap-2"
                   >
                     <ShoppingBag className="w-4 h-4" />
-                    <span>{isOutOfStock ? 'Out of Stock' : 'Redeem / Purchase'}</span>
+                    <span>{isOutOfStock ? 'Out of Stock' : 'Redeem or Buy'}</span>
                   </button>
                 </div>
               </div>

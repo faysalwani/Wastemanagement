@@ -98,24 +98,24 @@ export default function Orders() {
       {/* Header Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold mb-2">
-            <Package className="w-3.5 h-3.5 text-emerald-600" />
-            Order Fulfillment & Redemptions
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#E5F4E8] border border-[#BCE0C6] text-[#1A693B] text-xs font-semibold mb-2">
+            <Package className="w-3.5 h-3.5 text-[#21834A]" />
+            Reward Orders
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#26372B] tracking-tight">
             My Orders & Redemptions
           </h1>
-          <p className="text-xs sm:text-sm text-slate-600 mt-1">
-            Review your reward delivery status, transaction receipts, and order histories.
+          <p className="text-sm text-[#526356] mt-1">
+            Track the delivery status of items you redeemed or purchased from the Rewards Store.
           </p>
         </div>
 
         <Link
           to="/marketplace"
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-xs transition-colors self-start sm:self-auto"
+          className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#21834A] hover:bg-[#1A693B] text-white text-xs sm:text-sm font-bold shadow-xs transition-colors self-start sm:self-auto"
         >
-          <ShoppingBag className="w-3.5 h-3.5" />
-          <span>Browse Marketplace</span>
+          <ShoppingBag className="w-4 h-4" />
+          <span>Rewards Store</span>
         </Link>
       </div>
 

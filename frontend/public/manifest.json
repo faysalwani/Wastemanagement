@@ -1,0 +1,17 @@
+{
+  "name": "Clear Waste",
+  "short_name": "Clear Waste",
+  "description": "Smarter waste. Cleaner communities. Find the right way to reuse, recycle or dispose of your waste.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F8FAF8",
+  "theme_color": "#21834A",
+  "icons": [
+    {
+      "src": "/clear-waste-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

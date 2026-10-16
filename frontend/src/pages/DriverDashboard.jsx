@@ -1,21 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Truck, 
-  MapPin, 
-  CheckCircle2, 
-  AlertCircle, 
-  Play, 
-  Square, 
-  Clock, 
-  Radio, 
-  Navigation, 
-  ChevronRight, 
-  AlertOctagon, 
-  Send, 
-  FileText,
+import {
+  Truck,
+  MapPin,
+  CheckCircle2,
+  Play,
+  Square,
+  Clock,
+  Radio,
   History,
   X,
-  Phone
 } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -32,7 +25,7 @@ export default function DriverDashboard() {
   const [loading, setLoading] = useState(true);
   const [viewTab, setViewTab] = useState('ACTIVE_RUN'); // ACTIVE_RUN or HISTORY
 
-  // GPS Telemetry Tracking
+  // Real GPS Telemetry Tracking
   const [gpsActive, setGpsActive] = useState(false);
   const [gpsCoords, setGpsCoords] = useState(null);
   const watchIdRef = useRef(null);
@@ -46,7 +39,6 @@ export default function DriverDashboard() {
   const [submittingAction, setSubmittingAction] = useState(false);
   const [feedback, setFeedback] = useState(null);
 
-  // Fetch Driver Active Run & Vehicle
   const fetchDriverState = async () => {
     setLoading(true);
     try {
@@ -60,7 +52,6 @@ export default function DriverDashboard() {
       }
 
       if (vehRes.data.success) {
-        // Find vehicle assigned to this driver
         const myVeh = vehRes.data.data.find(
           (v) => v.driverId?._id === user?._id || v.driverId === user?._id
         );
@@ -94,12 +85,11 @@ export default function DriverDashboard() {
     }
   }, [viewTab, historyFilter]);
 
-  // Listen for admin dispatches
   useEffect(() => {
     if (!socket) return;
 
     socket.on('new_route_dispatched', () => {
-      setFeedback('New collection route dispatched to your vehicle!');
+      setFeedback('New collection route assigned to your vehicle.');
       fetchDriverState();
     });
 
@@ -108,21 +98,25 @@ export default function DriverDashboard() {
     };
   }, [socket]);
 
-  // Live GPS Tracking Handler
+  // Real Browser Geolocation GPS Handler
   const toggleGpsTracking = () => {
     if (gpsActive) {
       if (watchIdRef.current) navigator.geolocation.clearWatch(watchIdRef.current);
       setGpsActive(false);
     } else {
       if (!navigator.geolocation) {
-        alert('Geolocation is not supported by your browser.');
+        alert('Geolocation is not supported on this device.');
         return;
       }
       setGpsActive(true);
       watchIdRef.current = navigator.geolocation.watchPosition(
         async (position) => {
           const { latitude, longitude, speed, heading } = position.coords;
-          setGpsCoords({ latitude, longitude, speed: speed ? (speed * 3.6).toFixed(1) : 0 });
+          setGpsCoords({
+            latitude: latitude.toFixed(5),
+            longitude: longitude.toFixed(5),
+            speed: speed ? (speed * 3.6).toFixed(1) : 0,
+          });
 
           const vehicleIdToPing = activeRun?.vehicleId?._id || assignedVehicle?._id;
           if (vehicleIdToPing) {
@@ -133,7 +127,7 @@ export default function DriverDashboard() {
                 speedKmh: speed ? speed * 3.6 : 20,
                 heading: heading || 0,
               });
-            } catch (err) {
+            } catch {
               // Background tracking sync
             }
           }
@@ -146,28 +140,25 @@ export default function DriverDashboard() {
     }
   };
 
-  // Clean up GPS on unmount
   useEffect(() => {
     return () => {
       if (watchIdRef.current) navigator.geolocation.clearWatch(watchIdRef.current);
     };
   }, []);
 
-  // Start Collection Run
   const handleStartRun = async () => {
     if (!activeRun) return;
     try {
       const res = await api.patch(`/collection-runs/${activeRun._id}/start`);
       if (res.data.success) {
-        setFeedback('Collection run activated. Drive safely!');
+        setFeedback('Route started. Safe driving!');
         fetchDriverState();
       }
     } catch (err) {
-      alert(err.response?.data?.error?.message || 'Failed to start run.');
+      alert(err.response?.data?.error?.message || 'Failed to start route.');
     }
   };
 
-  // Mark Stop as Collected
   const handleConfirmCollect = async (e) => {
     e.preventDefault();
     if (!collectModalStop || !activeRun) return;
@@ -184,7 +175,7 @@ export default function DriverDashboard() {
       );
 
       if (res.data.success) {
-        setFeedback(`Stop #${collectModalStop.stopSequence} marked as COLLECTED.`);
+        setFeedback(`Stop #${collectModalStop.stopSequence} marked as collected.`);
         setCollectModalStop(null);
         setCollectedWeight('');
         setDriverNotes('');
@@ -197,7 +188,6 @@ export default function DriverDashboard() {
     }
   };
 
-  // Mark Stop as Skipped
   const handleConfirmSkip = async (e) => {
     e.preventDefault();
     if (!skipModalStop || !activeRun) return;
@@ -214,7 +204,7 @@ export default function DriverDashboard() {
       );
 
       if (res.data.success) {
-        setFeedback(`Stop #${skipModalStop.stopSequence} marked as SKIPPED (${skipReason}).`);
+        setFeedback(`Stop #${skipModalStop.stopSequence} skipped (${skipReason}).`);
         setSkipModalStop(null);
         setDriverNotes('');
         fetchDriverState();
@@ -226,14 +216,13 @@ export default function DriverDashboard() {
     }
   };
 
-  // End Collection Run
   const handleEndRun = async () => {
     if (!activeRun) return;
 
     const remainingPending = activeRun.stops.filter((s) => s.status === 'PENDING').length;
     if (remainingPending > 0) {
       const confirm = window.confirm(
-        `There are still ${remainingPending} uncollected stops in this run. Are you sure you want to end the collection run now?`
+        `There are still ${remainingPending} uncollected stops on your route. End the route now?`
       );
       if (!confirm) return;
     }
@@ -241,155 +230,203 @@ export default function DriverDashboard() {
     try {
       const res = await api.patch(`/collection-runs/${activeRun._id}/end`);
       if (res.data.success) {
-        setFeedback('Collection run completed! Manifest archived.');
+        setFeedback('Route completed and saved.');
         setActiveRun(null);
         fetchDriverState();
       }
     } catch (err) {
-      alert(err.response?.data?.error?.message || 'Failed to end collection run.');
+      alert(err.response?.data?.error?.message || 'Failed to end route.');
     }
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
-      {/* Top Driver Header */}
-      <div className="p-6 bg-slate-900 rounded-3xl text-white shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 text-xs font-semibold text-emerald-300 mb-2">
-            <Truck className="w-3.5 h-3.5" />
-            <span>Driver Telematics Console</span>
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
+      {/* Top Driver Status Card — High Contrast Outdoor Layout */}
+      <div className="p-6 bg-[#26372B] rounded-3xl text-white shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 text-xs font-bold text-[#E5F4E8]">
+            <Truck className="w-4 h-4 text-[#84D19B]" />
+            <span>Clear Waste Driver Console</span>
           </div>
-          <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">
-            Welcome, {user?.name || 'Municipal Driver'}
+          <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight pt-1">
+            {user?.name || 'Collection Driver'}
           </h1>
-          <p className="text-xs text-slate-300 mt-0.5">
-            Assigned Vehicle: <span className="font-mono font-bold text-emerald-400">{assignedVehicle?.plateNumber || 'No vehicle currently assigned'}</span>
-          </p>
+          <div className="text-sm text-[#E5F4E8]/90 flex flex-wrap items-center gap-x-4 gap-y-1">
+            <span>
+              Vehicle:{' '}
+              <strong className="font-mono text-white">
+                {assignedVehicle?.plateNumber || 'Unassigned'}
+              </strong>
+            </span>
+            {assignedVehicle?.status && (
+              <span>
+                Status: <strong className="text-[#84D19B]">{assignedVehicle.status}</strong>
+              </span>
+            )}
+          </div>
         </div>
 
-        {/* GPS Broadcast Switch */}
-        <div className="flex items-center gap-3">
+        {/* Large Touch-Friendly GPS Button */}
+        <div className="flex flex-col sm:items-end gap-1.5">
           <button
+            type="button"
             onClick={toggleGpsTracking}
-            className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 shadow-xs ${
+            className={`min-h-[48px] px-5 py-3 rounded-2xl text-sm font-extrabold transition-colors flex items-center justify-center gap-2.5 shadow-xs ${
               gpsActive
-                ? 'bg-emerald-500 text-white shadow-emerald-500/30'
-                : 'bg-white/10 text-slate-200 hover:bg-white/20'
+                ? 'bg-[#21834A] text-white border border-[#84D19B]/40'
+                : 'bg-white text-[#26372B] hover:bg-[#E5F4E8]'
             }`}
           >
-            <Radio className={`w-4 h-4 ${gpsActive ? 'animate-pulse' : ''}`} />
-            <span>{gpsActive ? 'Live GPS Active' : 'Enable Live GPS'}</span>
+            <Radio className={`w-4 h-4 ${gpsActive ? 'animate-pulse' : 'text-[#21834A]'}`} />
+            <span>{gpsActive ? 'GPS Broadcasting On' : 'Turn On Live GPS'}</span>
           </button>
+          {gpsActive && gpsCoords && (
+            <span className="text-xs text-[#E5F4E8]/80 font-mono">
+              {gpsCoords.latitude}° N, {gpsCoords.longitude}° E
+            </span>
+          )}
         </div>
       </div>
 
       {feedback && (
-        <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs font-semibold text-emerald-800 flex items-center gap-2 animate-in fade-in">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-          <span>{feedback}</span>
+        <div
+          role="status"
+          className="p-4 rounded-2xl bg-[#E5F4E8] border border-[#BCE0C6] text-sm font-bold text-[#1A693B] flex items-center justify-between gap-2"
+        >
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-5 h-5 text-[#21834A] flex-shrink-0" />
+            <span>{feedback}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setFeedback(null)}
+            className="text-xs underline font-semibold"
+          >
+            Dismiss
+          </button>
         </div>
       )}
 
-      {/* Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-200 pb-1">
+      {/* Touch-Friendly View Switcher */}
+      <div className="grid grid-cols-2 gap-3 p-1.5 bg-white rounded-2xl border border-[#DCE6DF]">
         <button
+          type="button"
           onClick={() => setViewTab('ACTIVE_RUN')}
-          className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all ${
+          className={`min-h-[44px] py-2.5 px-4 rounded-xl text-sm font-bold transition-colors ${
             viewTab === 'ACTIVE_RUN'
-              ? 'bg-slate-900 text-white shadow-xs'
-              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              ? 'bg-[#21834A] text-white shadow-xs'
+              : 'text-[#526356] hover:text-[#26372B]'
           }`}
         >
-          Active Run Manifest
+          Current Assignment
         </button>
         <button
+          type="button"
           onClick={() => setViewTab('HISTORY')}
-          className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all ${
+          className={`min-h-[44px] py-2.5 px-4 rounded-xl text-sm font-bold transition-colors ${
             viewTab === 'HISTORY'
-              ? 'bg-slate-900 text-white shadow-xs'
-              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              ? 'bg-[#21834A] text-white shadow-xs'
+              : 'text-[#526356] hover:text-[#26372B]'
           }`}
         >
-          Collection History
+          Past Routes
         </button>
       </div>
 
-      {/* TAB 1: ACTIVE RUN MANIFEST */}
+      {/* TAB 1: CURRENT ASSIGNMENT */}
       {viewTab === 'ACTIVE_RUN' && (
         <div className="space-y-6">
           {loading ? (
-            <div className="py-16 text-center text-xs text-slate-400">Checking for assigned runs...</div>
+            <div className="py-16 text-center text-sm text-[#526356] bg-white rounded-3xl border border-[#DCE6DF]">
+              Loading your current assignment...
+            </div>
           ) : !activeRun ? (
-            <div className="p-12 rounded-3xl bg-white border border-slate-200 shadow-xs text-center space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
+            <div className="p-12 rounded-3xl bg-white border border-[#DCE6DF] text-center space-y-3">
+              <div className="w-12 h-12 rounded-2xl bg-[#E5F4E8] text-[#21834A] flex items-center justify-center mx-auto">
                 <Clock className="w-6 h-6" />
               </div>
-              <h3 className="font-extrabold text-base text-slate-900">No Active Collection Run</h3>
-              <p className="text-xs text-slate-500 max-w-md mx-auto">
-                You currently have no active collection route assigned by the municipal dispatcher. When a new route is dispatched, it will appear here automatically.
+              <h2 className="font-extrabold text-lg text-[#26372B]">No Active Route Assigned</h2>
+              <p className="text-sm text-[#526356] max-w-md mx-auto">
+                You do not have an active route right now. When operations dispatch a new route to your truck, it will appear here automatically.
               </p>
             </div>
           ) : (
             <div className="space-y-6">
-              {/* Active Run Overview Card */}
-              <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-xs space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+              {/* Assignment Summary & Primary Start/End Button */}
+              <div className="p-6 rounded-3xl bg-white border border-[#DCE6DF] shadow-xs space-y-5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#DCE6DF]">
                   <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-mono font-extrabold text-base text-slate-900">{activeRun.runId}</h3>
-                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
-                        activeRun.status === 'IN_PROGRESS'
-                          ? 'bg-sky-100 text-sky-800 animate-pulse'
-                          : 'bg-amber-100 text-amber-800'
-                      }`}>
-                        {activeRun.status}
+                    <div className="flex items-center gap-2.5">
+                      <h2 className="font-mono font-extrabold text-lg text-[#26372B]">
+                        {activeRun.runId}
+                      </h2>
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-extrabold uppercase ${
+                          activeRun.status === 'IN_PROGRESS'
+                            ? 'bg-[#E5F4E8] text-[#1A693B]'
+                            : 'bg-amber-100 text-amber-900'
+                        }`}
+                      >
+                        {activeRun.status === 'IN_PROGRESS' ? 'In Progress' : 'Ready to Start'}
                       </span>
                     </div>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      Ward: <span className="font-bold text-slate-700">{activeRun.wardName}</span> • Est: {activeRun.totalDistanceKm} km (~{activeRun.estimatedDurationMinutes} min)
+                    <p className="text-sm text-[#526356] mt-1">
+                      Area: <strong className="text-[#26372B]">{activeRun.wardName}</strong> •{' '}
+                      {activeRun.totalDistanceKm} km (~{activeRun.estimatedDurationMinutes} mins)
                     </p>
                   </div>
 
-                  {/* Actions: Start or End */}
-                  <div className="flex items-center gap-2">
+                  {/* Large Touch Action */}
+                  <div>
                     {activeRun.status === 'ASSIGNED' ? (
                       <button
+                        type="button"
                         onClick={handleStartRun}
-                        className="px-5 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold shadow-md shadow-emerald-600/20 transition-all flex items-center gap-2"
+                        className="w-full sm:w-auto min-h-[48px] px-6 py-3 rounded-2xl bg-[#21834A] hover:bg-[#1A693B] text-white text-sm font-extrabold shadow-xs transition-colors flex items-center justify-center gap-2"
                       >
                         <Play className="w-4 h-4 fill-white" />
-                        <span>Start Collection Run</span>
+                        <span>Start Route</span>
                       </button>
                     ) : (
                       <button
+                        type="button"
                         onClick={handleEndRun}
-                        className="px-5 py-2.5 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-extrabold shadow-md shadow-rose-600/20 transition-all flex items-center gap-2"
+                        className="w-full sm:w-auto min-h-[48px] px-6 py-3 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white text-sm font-extrabold shadow-xs transition-colors flex items-center justify-center gap-2"
                       >
                         <Square className="w-4 h-4 fill-white" />
-                        <span>End Collection Run</span>
+                        <span>Finish Route</span>
                       </button>
                     )}
                   </div>
                 </div>
 
                 {/* Progress Bar */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between text-xs font-bold text-slate-700">
-                    <span>Stops Progress</span>
-                    <span>{activeRun.completedStops || 0} of {activeRun.totalStops} Completed ({activeRun.skippedStops || 0} skipped)</span>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm font-bold text-[#26372B]">
+                    <span>Route Progress</span>
+                    <span>
+                      {activeRun.completedStops || 0} of {activeRun.totalStops} stops completed
+                      {activeRun.skippedStops > 0 && ` (${activeRun.skippedStops} skipped)`}
+                    </span>
                   </div>
-                  <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
+                  <div className="w-full h-3 rounded-full bg-[#F8FAF8] border border-[#DCE6DF] overflow-hidden">
                     <div
-                      className="h-full bg-emerald-500 transition-all duration-300"
-                      style={{ width: `${(activeRun.completedStops / activeRun.totalStops) * 100}%` }}
-                    ></div>
+                      className="h-full bg-[#21834A] transition-all duration-300"
+                      style={{
+                        width: `${Math.round(
+                          ((activeRun.completedStops || 0) / (activeRun.totalStops || 1)) * 100
+                        )}%`,
+                      }}
+                    />
                   </div>
                 </div>
               </div>
 
-              {/* Waypoints Stops List */}
+              {/* Route Stops List */}
               <div className="space-y-3">
-                <h4 className="font-extrabold text-sm text-slate-900">Assigned Waypoints Sequence</h4>
+                <h3 className="font-bold text-base text-[#26372B] px-1">
+                  Assigned Pickup Stops ({activeRun.stops.length})
+                </h3>
 
                 <div className="space-y-3">
                   {activeRun.stops.map((stop) => {
@@ -400,84 +437,88 @@ export default function DriverDashboard() {
                     return (
                       <div
                         key={stop.stopSequence}
-                        className={`p-5 rounded-3xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+                        className={`p-5 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
                           isCollected
-                            ? 'bg-emerald-50/40 border-emerald-200'
+                            ? 'bg-[#E5F4E8]/50 border-[#BCE0C6]'
                             : isSkipped
-                            ? 'bg-slate-50 border-slate-200 opacity-60'
-                            : 'bg-white border-slate-200 shadow-xs'
+                            ? 'bg-slate-50 border-slate-200 opacity-75'
+                            : 'bg-white border-[#DCE6DF] shadow-2xs'
                         }`}
                       >
-                        <div className="flex items-start gap-3">
-                          <div className={`w-8 h-8 rounded-2xl flex items-center justify-center font-extrabold text-xs flex-shrink-0 ${
-                            isCollected
-                              ? 'bg-emerald-600 text-white'
-                              : isSkipped
-                              ? 'bg-slate-400 text-white'
-                              : 'bg-slate-900 text-white'
-                          }`}>
+                        <div className="flex items-start gap-3.5">
+                          <div
+                            className={`w-10 h-10 rounded-xl flex items-center justify-center font-extrabold text-sm flex-shrink-0 ${
+                              isCollected
+                                ? 'bg-[#21834A] text-white'
+                                : isSkipped
+                                ? 'bg-slate-400 text-white'
+                                : 'bg-[#26372B] text-white'
+                            }`}
+                          >
                             #{stop.stopSequence}
                           </div>
 
                           <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <span className="font-bold text-xs text-slate-900">{stop.identifier}</span>
-                              <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase ${
-                                stop.type === 'SMART_BIN' ? 'bg-indigo-100 text-indigo-800' : 'bg-purple-100 text-purple-800'
-                              }`}>
-                                {stop.type === 'SMART_BIN' ? 'Smart Bin' : 'Citizen Pickup'}
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="font-bold text-base text-[#26372B]">
+                                {stop.name}
                               </span>
-                              <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase ${
-                                stop.priority === 'CRITICAL' ? 'bg-rose-100 text-rose-800' : 'bg-slate-100 text-slate-700'
-                              }`}>
-                                {stop.priority}
+                              <span className="px-2.5 py-0.5 rounded-lg bg-[#F8FAF8] border border-[#DCE6DF] text-[#26372B] text-xs font-bold">
+                                {stop.type === 'SMART_BIN' ? 'Public Bin' : 'Citizen Pickup'}
                               </span>
+                              {stop.priority === 'CRITICAL' && (
+                                <span className="px-2.5 py-0.5 rounded-lg bg-rose-100 text-rose-800 text-xs font-bold">
+                                  Urgent
+                                </span>
+                              )}
                             </div>
 
-                            <div className="font-semibold text-xs text-slate-800">{stop.name}</div>
-                            <div className="text-[11px] text-slate-500 flex items-center gap-1">
-                              <MapPin className="w-3 h-3 text-slate-400" />
+                            <div className="text-sm text-[#526356] flex items-center gap-1.5">
+                              <MapPin className="w-4 h-4 text-[#21834A] flex-shrink-0" />
                               <span>{stop.address || stop.wardName}</span>
                             </div>
 
                             {isSkipped && (
-                              <div className="text-[11px] text-rose-600 font-bold pt-1">
-                                Reason: {stop.skipReason} {stop.driverNotes && `— ${stop.driverNotes}`}
+                              <div className="text-xs text-rose-700 font-bold pt-1">
+                                Skipped: {stop.skipReason}{' '}
+                                {stop.driverNotes && `— ${stop.driverNotes}`}
                               </div>
                             )}
 
                             {isCollected && stop.collectedWeightKg && (
-                              <div className="text-[11px] text-emerald-800 font-bold pt-1">
-                                Collected: {stop.collectedWeightKg} kg
+                              <div className="text-xs text-[#1A693B] font-bold pt-1">
+                                Weight recorded: {stop.collectedWeightKg} kg
                               </div>
                             )}
                           </div>
                         </div>
 
-                        {/* Stop Action Buttons (Only enabled if run is in progress) */}
-                        <div className="flex items-center gap-2 sm:self-center">
+                        {/* Large Touch Stop Buttons */}
+                        <div className="flex items-center gap-2.5 sm:self-center">
                           {isPending && (
                             <>
                               <button
+                                type="button"
                                 onClick={() => {
                                   setCollectModalStop(stop);
                                   setCollectedWeight(stop.estimatedWeightKg || '');
                                 }}
                                 disabled={activeRun.status !== 'IN_PROGRESS'}
-                                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-2xs ${
+                                className={`flex-1 sm:flex-initial min-h-[44px] px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-colors ${
                                   activeRun.status === 'IN_PROGRESS'
-                                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                                    ? 'bg-[#21834A] hover:bg-[#1A693B] text-white shadow-2xs'
                                     : 'bg-slate-100 text-slate-400 cursor-not-allowed'
                                 }`}
                               >
-                                Mark Collected
+                                Confirm Pickup
                               </button>
                               <button
+                                type="button"
                                 onClick={() => setSkipModalStop(stop)}
                                 disabled={activeRun.status !== 'IN_PROGRESS'}
-                                className={`px-3 py-2 rounded-xl border text-xs font-bold transition-all ${
+                                className={`min-h-[44px] px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-bold transition-colors ${
                                   activeRun.status === 'IN_PROGRESS'
-                                    ? 'border-rose-200 text-rose-600 hover:bg-rose-50'
+                                    ? 'border-rose-200 text-rose-700 hover:bg-rose-50'
                                     : 'border-slate-200 text-slate-400 cursor-not-allowed'
                                 }`}
                               >
@@ -487,13 +528,13 @@ export default function DriverDashboard() {
                           )}
 
                           {isCollected && (
-                            <span className="text-emerald-700 font-bold text-xs flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-100/60">
-                              <CheckCircle2 className="w-4 h-4" /> Collected
+                            <span className="text-[#1A693B] font-bold text-xs sm:text-sm flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#E5F4E8]">
+                              <CheckCircle2 className="w-4 h-4 text-[#21834A]" /> Collected
                             </span>
                           )}
 
                           {isSkipped && (
-                            <span className="text-slate-500 font-bold text-xs px-3 py-1.5 rounded-xl bg-slate-200/60">
+                            <span className="text-slate-600 font-bold text-xs sm:text-sm px-3.5 py-2 rounded-xl bg-slate-200/70">
                               Skipped
                             </span>
                           )}
@@ -508,15 +549,15 @@ export default function DriverDashboard() {
         </div>
       )}
 
-      {/* TAB 2: COLLECTION HISTORY */}
+      {/* TAB 2: PAST ROUTES */}
       {viewTab === 'HISTORY' && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between p-4 rounded-2xl bg-white border border-slate-200">
-            <h3 className="font-extrabold text-sm text-slate-900">Your Completed Runs History</h3>
+          <div className="flex items-center justify-between p-4 rounded-2xl bg-white border border-[#DCE6DF]">
+            <h2 className="font-bold text-sm sm:text-base text-[#26372B]">Completed Routes</h2>
             <select
               value={historyFilter}
               onChange={(e) => setHistoryFilter(e.target.value)}
-              className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold bg-slate-50 outline-none"
+              className="px-3.5 py-2 rounded-xl border border-[#DCE6DF] text-xs sm:text-sm font-semibold bg-[#F8FAF8] text-[#26372B] outline-none"
             >
               <option value="today">Today</option>
               <option value="this_week">This Week</option>
@@ -526,20 +567,28 @@ export default function DriverDashboard() {
           </div>
 
           {historyRuns.length === 0 ? (
-            <div className="p-12 rounded-3xl bg-white border border-slate-200 text-center space-y-2">
-              <History className="w-8 h-8 text-slate-300 mx-auto" />
-              <p className="text-xs font-semibold text-slate-600">No completed runs in this timeframe.</p>
+            <div className="p-12 rounded-2xl bg-white border border-[#DCE6DF] text-center space-y-2">
+              <History className="w-8 h-8 text-[#526356]/50 mx-auto" />
+              <p className="text-sm font-semibold text-[#526356]">
+                No completed routes for this period.
+              </p>
             </div>
           ) : (
             <div className="space-y-3">
               {historyRuns.map((h) => (
-                <div key={h._id} className="p-5 rounded-3xl bg-white border border-slate-200 shadow-xs space-y-2">
+                <div
+                  key={h._id}
+                  className="p-5 rounded-2xl bg-white border border-[#DCE6DF] space-y-1.5"
+                >
                   <div className="flex items-center justify-between">
-                    <span className="font-mono font-bold text-xs text-slate-900">{h.runId}</span>
-                    <span className="text-xs text-slate-500">{new Date(h.createdAt).toLocaleDateString()}</span>
+                    <span className="font-mono font-bold text-sm text-[#26372B]">{h.runId}</span>
+                    <span className="text-xs text-[#526356]">
+                      {new Date(h.createdAt).toLocaleDateString()}
+                    </span>
                   </div>
-                  <div className="text-xs text-slate-600">
-                    Ward: <span className="font-bold text-slate-800">{h.wardName}</span> • Completed: {h.completedStops} / {h.totalStops} stops ({h.skippedStops || 0} skipped)
+                  <div className="text-sm text-[#526356]">
+                    Area: <strong className="text-[#26372B]">{h.wardName}</strong> • Completed:{' '}
+                    {h.completedStops} / {h.totalStops} stops
                   </div>
                 </div>
               ))}
@@ -548,38 +597,50 @@ export default function DriverDashboard() {
         </div>
       )}
 
-      {/* Collect Modal */}
+      {/* Confirm Pickup Modal */}
       {collectModalStop && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 border border-slate-200 shadow-2xl">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-              <h4 className="font-extrabold text-sm text-slate-900">
-                Confirm Collection #{collectModalStop.stopSequence}
-              </h4>
-              <button onClick={() => setCollectModalStop(null)} className="text-slate-400 font-bold">✕</button>
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 border border-[#DCE6DF] shadow-xl">
+            <div className="flex items-center justify-between pb-3 border-b border-[#DCE6DF]">
+              <h3 className="font-bold text-base text-[#26372B]">
+                Confirm Pickup #{collectModalStop.stopSequence}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setCollectModalStop(null)}
+                className="p-1 text-[#526356] hover:text-[#26372B]"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
-            <form onSubmit={handleConfirmCollect} className="space-y-3">
+            <form onSubmit={handleConfirmCollect} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Measured Weight (kg)</label>
+                <label htmlFor="collect-weight" className="block text-sm font-semibold text-[#26372B] mb-1">
+                  Collected weight (kg)
+                </label>
                 <input
+                  id="collect-weight"
                   type="number"
                   step="0.1"
                   required
                   value={collectedWeight}
                   onChange={(e) => setCollectedWeight(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs outline-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#DCE6DF] text-sm outline-none focus:border-[#21834A]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Driver Notes (Optional)</label>
+                <label htmlFor="collect-notes" className="block text-sm font-semibold text-[#26372B] mb-1">
+                  Notes (optional)
+                </label>
                 <input
+                  id="collect-notes"
                   type="text"
-                  placeholder="e.g. Bin emptied completely"
+                  placeholder="e.g. Emptied completely"
                   value={driverNotes}
                   onChange={(e) => setDriverNotes(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs outline-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#DCE6DF] text-sm outline-none focus:border-[#21834A]"
                 />
               </div>
 
@@ -587,16 +648,16 @@ export default function DriverDashboard() {
                 <button
                   type="button"
                   onClick={() => setCollectModalStop(null)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600"
+                  className="px-4 py-2.5 rounded-xl border border-[#DCE6DF] text-xs font-bold text-[#526356]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submittingAction}
-                  className="px-5 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold shadow-xs"
+                  className="px-5 py-2.5 rounded-xl bg-[#21834A] hover:bg-[#1A693B] text-white text-xs font-bold shadow-xs"
                 >
-                  {submittingAction ? 'Saving...' : 'Confirm Collected'}
+                  {submittingAction ? 'Saving...' : 'Confirm Pickup'}
                 </button>
               </div>
             </form>
@@ -604,24 +665,33 @@ export default function DriverDashboard() {
         </div>
       )}
 
-      {/* Skip Modal */}
+      {/* Skip Stop Modal */}
       {skipModalStop && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 border border-slate-200 shadow-2xl">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-              <h4 className="font-extrabold text-sm text-slate-900">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 border border-[#DCE6DF] shadow-xl">
+            <div className="flex items-center justify-between pb-3 border-b border-[#DCE6DF]">
+              <h3 className="font-bold text-base text-[#26372B]">
                 Skip Stop #{skipModalStop.stopSequence}
-              </h4>
-              <button onClick={() => setSkipModalStop(null)} className="text-slate-400 font-bold">✕</button>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setSkipModalStop(null)}
+                className="p-1 text-[#526356] hover:text-[#26372B]"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
-            <form onSubmit={handleConfirmSkip} className="space-y-3">
+            <form onSubmit={handleConfirmSkip} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Required Skip Reason *</label>
+                <label htmlFor="skip-reason" className="block text-sm font-semibold text-[#26372B] mb-1">
+                  Reason for skipping
+                </label>
                 <select
+                  id="skip-reason"
                   value={skipReason}
                   onChange={(e) => setSkipReason(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white outline-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#DCE6DF] text-sm bg-white outline-none focus:border-[#21834A]"
                 >
                   <option value="Road inaccessible">Road inaccessible</option>
                   <option value="Bin unavailable">Bin unavailable</option>
@@ -633,13 +703,16 @@ export default function DriverDashboard() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Details / Notes</label>
+                <label htmlFor="skip-notes" className="block text-sm font-semibold text-[#26372B] mb-1">
+                  Additional details
+                </label>
                 <input
+                  id="skip-notes"
                   type="text"
-                  placeholder="e.g. Construction truck blocked alleyway"
+                  placeholder="e.g. Street blocked by roadwork"
                   value={driverNotes}
                   onChange={(e) => setDriverNotes(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs outline-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#DCE6DF] text-sm outline-none focus:border-[#21834A]"
                 />
               </div>
 
@@ -647,16 +720,16 @@ export default function DriverDashboard() {
                 <button
                   type="button"
                   onClick={() => setSkipModalStop(null)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600"
+                  className="px-4 py-2.5 rounded-xl border border-[#DCE6DF] text-xs font-bold text-[#526356]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submittingAction}
-                  className="px-5 py-2 rounded-xl bg-rose-600 text-white text-xs font-bold shadow-xs"
+                  className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-xs"
                 >
-                  {submittingAction ? 'Submitting...' : 'Confirm Skip'}
+                  {submittingAction ? 'Saving...' : 'Confirm Skip'}
                 </button>
               </div>
             </form>

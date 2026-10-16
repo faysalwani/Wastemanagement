@@ -398,7 +398,7 @@ export default function RecyclersAdminTab() {
                     type="email"
                     value={form.contactEmail}
                     onChange={(e) => setForm({ ...form, contactEmail: e.target.value })}
-                    placeholder="shalimar@ecocycle.in"
+                    placeholder="contact@example.com"
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none focus:border-emerald-500"
                   />
                 </div>
